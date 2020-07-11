@@ -1,0 +1,2 @@
+rootProject.name='CircularDotter'
+include ':app'
