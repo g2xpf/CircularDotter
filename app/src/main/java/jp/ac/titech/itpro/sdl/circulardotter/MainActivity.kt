@@ -10,8 +10,7 @@ import android.view.WindowManager
 
 class MainActivity : AppCompatActivity() {
     private val TAG = MainActivity::class.qualifiedName
-    private var glView: GLSurfaceView? = null
-    private val renderer: Renderer = Renderer()
+    private var glView: CDGLSurfaceView? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -28,9 +27,7 @@ class MainActivity : AppCompatActivity() {
 
         setContentView(R.layout.activity_main)
 
-
         glView = findViewById(R.id.gl_view)
-        glView!!.setRenderer(renderer)
     }
 
     override fun onResume() {
