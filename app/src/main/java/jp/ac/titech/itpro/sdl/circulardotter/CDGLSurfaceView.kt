@@ -1,9 +1,11 @@
 package jp.ac.titech.itpro.sdl.circulardotter
 
+import android.app.Activity
 import android.content.Context
 import android.opengl.GLSurfaceView
 import android.util.AttributeSet
-import jp.ac.titech.itpro.sdl.circulardotter.component.Canvas
+import android.util.DisplayMetrics
+import android.view.Display
 
 class CDGLSurfaceView(context: Context, attributeSet: AttributeSet) :
     GLSurfaceView(context, attributeSet) {

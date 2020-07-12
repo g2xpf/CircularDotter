@@ -10,6 +10,8 @@ import javax.microedition.khronos.opengles.GL10
 class Renderer : GLSurfaceView.Renderer {
     private val TAG = Renderer::class.qualifiedName
     private val components: HashMap<String, Component> = hashMapOf()
+    private var width = 0;
+    private var height = 0;
 
     fun addComponent(name: String, component: Component) {
         components[name] = component
@@ -26,10 +28,17 @@ class Renderer : GLSurfaceView.Renderer {
     }
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
+        Log.d(TAG, "onSurfaceChanged")
+
+        for ((_, component) in components) {
+            component.onWindowResized(width, height)
+        }
+
         GLES31.glViewport(0, 0, width, height)
     }
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
-        addComponent("canvas", Canvas(200, 200))
+        Log.d(TAG, "onSurfaceCreated")
+        addComponent("canvas", Canvas())
     }
 }

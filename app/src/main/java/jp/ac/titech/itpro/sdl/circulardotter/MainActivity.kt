@@ -10,7 +10,7 @@ import android.view.WindowManager
 
 class MainActivity : AppCompatActivity() {
     private val TAG = MainActivity::class.qualifiedName
-    private var glView: CDGLSurfaceView? = null
+    private lateinit var glView: CDGLSurfaceView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,14 +33,13 @@ class MainActivity : AppCompatActivity() {
     override fun onResume() {
         super.onResume()
         Log.d(TAG, "onResume")
-        Log.d(TAG, (glView != null).toString())
-        glView!!.onResume()
+        glView.onResume()
     }
 
     override fun onPause() {
         super.onPause()
         Log.d(TAG, "onPause")
-        glView!!.onPause()
+        glView.onPause()
     }
 
     override fun onWindowFocusChanged(hasFocus: Boolean) {
