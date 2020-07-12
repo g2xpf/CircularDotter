@@ -5,7 +5,11 @@ import android.util.Log
 import java.nio.Buffer
 import java.nio.IntBuffer
 
-class Texture(width: Int, height: Int, data: Buffer) {
+class Texture(
+    private val width: Int,
+    private val height: Int,
+    private val data: Buffer
+) {
     private val TAG = Texture::class.qualifiedName
     private val texture: Int;
     private val textureCount: Int;
@@ -32,6 +36,14 @@ class Texture(width: Int, height: Int, data: Buffer) {
         GLES31.glActiveTexture(GLES31.GL_TEXTURE0 + textureCount)
         GLES31.glBindTexture(GLES31.GL_TEXTURE_2D, texture)
         return textureCount
+    }
+
+    fun write(x: Int, y: Int, w: Int, h: Int, data: Buffer) {
+        GLES31.glActiveTexture(GLES31.GL_TEXTURE0 + textureCount)
+        GLES31.glBindTexture(GLES31.GL_TEXTURE_2D, texture)
+        GLES31.glTexSubImage2D(GLES31.GL_TEXTURE_2D, 0, x, y, w, h, GLES31.GL_UNSIGNED_BYTE, GLES31.GL_RGB, data)
+
+        GLES31.glBindTexture(GLES31.GL_TEXTURE_2D, 0)
     }
 
     companion object {

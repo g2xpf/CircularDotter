@@ -2,6 +2,7 @@ package jp.ac.titech.itpro.sdl.circulardotter.component
 
 import android.opengl.GLES31
 import android.util.Log
+import androidx.core.math.MathUtils.clamp
 import jp.ac.titech.itpro.sdl.circulardotter.Component
 import jp.ac.titech.itpro.sdl.circulardotter.gl.ShaderProgram
 import jp.ac.titech.itpro.sdl.circulardotter.gl.Texture
@@ -18,8 +19,8 @@ class Canvas : Component {
     private val vertexBuffer: FloatBuffer
     private val shaderProgram: ShaderProgram
 
-    private var imageWidth = 8;
-    private var imageHeight = 8;
+    private var imageWidth = 32;
+    private var imageHeight = 32;
     private var imageBuffer: ByteBuffer
 
     private val canvasTexture: Texture;
@@ -27,10 +28,11 @@ class Canvas : Component {
     private var showCentralGrid = true
     private var showGrid = true
 
-    private var width = 1.0f;
-    private var height = 1.0f;
+    private var windowWidth = 1.0f;
+    private var windowHeight = 1.0f;
 
-    private var cursor = Pair<Int, Int>(2, 2)
+    // uv coord
+    private var cursor = Pair<Float, Float>(0.0f, 0.0f)
 
     init {
         vertexBuffer = ByteBuffer.allocateDirect(vertices.size * 4).run() {
@@ -61,8 +63,8 @@ class Canvas : Component {
     }
 
     override fun onWindowResized(width: Int, height: Int) {
-        this.width = width.toFloat()
-        this.height = height.toFloat()
+        windowWidth = width.toFloat()
+        windowHeight = height.toFloat()
     }
 
     override fun draw() {
@@ -87,7 +89,7 @@ class Canvas : Component {
         // uniform: iResolution
         val iResolution = shaderProgram.getUniformLocation("iResolution").also {
             Log.d(TAG, "iResolution: $it")
-            GLES31.glUniform2f(it, width, height)
+            GLES31.glUniform2f(it, windowWidth, windowHeight)
         }
 
         // uniform: canvasTexture
@@ -101,7 +103,7 @@ class Canvas : Component {
         // uniform: showGrid, showCentralGrid
         shaderProgram.getUniformLocation("showGrid").also {
             Log.d(TAG, "showGrid: $it")
-            GLES31.glUniform2i(it, if(showGrid) 1 else 0, if(showCentralGrid) 1 else 0)
+            GLES31.glUniform2i(it, if (showGrid) 1 else 0, if (showCentralGrid) 1 else 0)
         }
 
         // uniform: imageDimension
@@ -113,12 +115,25 @@ class Canvas : Component {
         // uniform: cursor
         shaderProgram.getUniformLocation("cursorPos").also {
             Log.d(TAG, "cursorPos: $it")
-            GLES31.glUniform2i(it, cursor.component1(), cursor.component2())
+            val (x, y) = cursor
+            GLES31.glUniform2i(it, (x * imageWidth).toInt(), (y * imageHeight).toInt())
+            Log.d(TAG, "x: " + (x * imageWidth).toInt() + ", y: " + (y * imageHeight).toInt())
         }
 
         GLES31.glDrawArrays(GLES31.GL_TRIANGLE_FAN, 0, verticesCnt)
 
         GLES31.glDisableVertexAttribArray(pos)
+    }
+
+    fun moveCursor(dx: Float, dy: Float) {
+        val (x, y) = cursor
+
+        val nx = clamp(x + dx / windowHeight, 0.0f, 0.9999f)
+        // div by width, and y is reversed
+        val ny = clamp(y + dy / windowHeight, 0.0f, 0.9999f)
+
+        Log.d(TAG, "(x, y, dx, dy, nx, ny) = ($x, $y, $dx, $dy, $nx, $ny)")
+        cursor = Pair(nx, ny)
     }
 
     fun setGrid(v: Boolean) {
@@ -127,6 +142,18 @@ class Canvas : Component {
 
     fun setCentralGrid(v: Boolean) {
         showCentralGrid = v
+    }
+
+    fun setColor(x: Int, y: Int, color: Triple<Int, Int, Int>) {
+        val buffer = ByteBuffer.allocateDirect(3).run {
+            order(ByteOrder.nativeOrder())
+            val (r, g, b) = color
+            put(r.toByte())
+            put(g.toByte())
+            put(b.toByte())
+            rewind()
+        }
+        canvasTexture.write(x, y, 1, 1, buffer)
     }
 
     companion object {
@@ -195,7 +222,7 @@ void main() {
     }
     
     // normal grid and cursor
-    if(showGrid.x > 0 && fillGrid(uvCentered, cellSize, GRID_WIDTH, vec4(vec3(0.3), 1.0))) {
+    if(showGrid.x > 0 && fillGrid(uvCentered, cellSize, GRID_WIDTH, vec4(vec3(0.7), 1.0))) {
         return;
     }
     

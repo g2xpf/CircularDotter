@@ -9,36 +9,38 @@ import javax.microedition.khronos.opengles.GL10
 
 class Renderer : GLSurfaceView.Renderer {
     private val TAG = Renderer::class.qualifiedName
-    private val components: HashMap<String, Component> = hashMapOf()
+    private lateinit var canvas: Canvas
     private var width = 0;
     private var height = 0;
-
-    fun addComponent(name: String, component: Component) {
-        components[name] = component
-    }
 
     override fun onDrawFrame(unused: GL10) {
         Log.d(TAG, "onDrawFrame")
         GLES31.glClearColor(1.0f, 0.0f, 0.0f, 1.0f)
         GLES31.glClear(GL10.GL_COLOR_BUFFER_BIT or GL10.GL_DEPTH_BUFFER_BIT)
 
-        for ((_, component) in components) {
-            component.draw()
-        }
+        canvas.draw()
     }
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
         Log.d(TAG, "onSurfaceChanged")
 
-        for ((_, component) in components) {
-            component.onWindowResized(width, height)
-        }
+        canvas.onWindowResized(width, height)
 
         GLES31.glViewport(0, 0, width, height)
     }
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         Log.d(TAG, "onSurfaceCreated")
-        addComponent("canvas", Canvas())
+        canvas = Canvas()
+    }
+
+    fun onTouch(x: Float, y: Float) {
+        Log.d(TAG, "touched: ($x, $y)")
+    }
+
+    fun onScroll(dx: Float, dy: Float) {
+        Log.d(TAG, "scrolled: ($dx, $dy)")
+        // y reversed
+        canvas.moveCursor(dx, -dy)
     }
 }
