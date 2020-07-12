@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">CircularDotter</string>
+    <string name="toast_no_gyroscope">No gyroscopes found</string>
+    <string name="toast_no_sensor_manager">No sensor manager found</string>
 </resources>

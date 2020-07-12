@@ -2,6 +2,7 @@ package jp.ac.titech.itpro.sdl.circulardotter.gl
 
 import android.opengl.GLES31
 import android.util.Log
+import java.nio.IntBuffer
 
 class ShaderProgram constructor(
     private val vertex: Int,
@@ -32,24 +33,25 @@ class ShaderProgram constructor(
         internal val TAG = ShaderProgramBuilder::class.qualifiedName
         fun setFragment(shaderSrc: String): ShaderProgramBuilder<Vertex, Set> {
             fragment = load(GLES31.GL_FRAGMENT_SHADER, shaderSrc)
-            Log.d(TAG, "fragment: $fragment")
             return ShaderProgramBuilder(vertex, fragment)
         }
 
         fun setVertex(shaderSrc: String): ShaderProgramBuilder<Set, Fragment> {
             vertex = load(GLES31.GL_VERTEX_SHADER, shaderSrc)
-            Log.d(TAG, "vertex: $vertex")
             return ShaderProgramBuilder(vertex, fragment)
         }
 
         private fun load(type: Int, shaderSrc: String): Int {
             return GLES31.glCreateShader(type).also { shader ->
-                Log.d(TAG, "createShader: $shader")
-                if (shader == 0) {
-                    Log.d(TAG, "error: " + GLES31.glGetError())
-                }
                 GLES31.glShaderSource(shader, shaderSrc)
                 GLES31.glCompileShader(shader)
+                val buf = IntBuffer.allocate(1)
+                GLES31.glGetShaderiv(shader, GLES31.GL_COMPILE_STATUS, buf)
+                if(buf[0] == GLES31.GL_FALSE) {
+                    val info = GLES31.glGetShaderInfoLog(shader)
+                    Log.e(TAG, info)
+                    GLES31.glDeleteShader(shader)
+                }
             }
         }
     }
@@ -62,6 +64,5 @@ fun ShaderProgram.ShaderProgramBuilder<ShaderProgram.Set, ShaderProgram.Set>.bui
         GLES31.glAttachShader(it, fragment)
         GLES31.glLinkProgram(it)
     }
-    Log.d(TAG, "program: $program")
     return ShaderProgram(vertex, fragment, program)
 }

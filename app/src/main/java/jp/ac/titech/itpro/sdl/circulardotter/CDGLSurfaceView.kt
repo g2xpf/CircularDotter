@@ -3,7 +3,6 @@ package jp.ac.titech.itpro.sdl.circulardotter
 import android.content.Context
 import android.opengl.GLSurfaceView
 import android.util.AttributeSet
-import android.util.Log
 import android.view.MotionEvent
 
 class CDGLSurfaceView(context: Context, attributeSet: AttributeSet) :
@@ -19,7 +18,7 @@ class CDGLSurfaceView(context: Context, attributeSet: AttributeSet) :
 
         setRenderer(renderer)
 
-        renderMode = RENDERMODE_WHEN_DIRTY
+        // renderMode = RENDERMODE_WHEN_DIRTY
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -28,7 +27,7 @@ class CDGLSurfaceView(context: Context, attributeSet: AttributeSet) :
         val y = event.getY(actionIndex)
 
         when (event.action and MotionEvent.ACTION_MASK) {
-            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN  -> {
+            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
                 renderer.onTouched(actionIndex, x, y)
                 prevX[actionIndex] = x
                 prevY[actionIndex] = y
@@ -47,5 +46,9 @@ class CDGLSurfaceView(context: Context, attributeSet: AttributeSet) :
 
         requestRender()
         return true
+    }
+
+    fun setGlobalInfo(globalInfo: GlobalInfo) {
+        renderer.setGlobalInfo(globalInfo)
     }
 }

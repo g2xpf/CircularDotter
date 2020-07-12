@@ -17,20 +17,19 @@ class Texture(
     private var prevCellInfo: CellInfo = CellInfo(-1 to -1, -1 to -1, Triple(0, 0, 0))
 ) {
     private val TAG = Texture::class.qualifiedName
-    private val texture: Int;
-    private val textureCount: Int;
+    private val texture: Int
+    private val textureCount: Int
 
     init {
         textureCount = totalTextureCount++
         val buf = IntBuffer.allocate(1)
 
         GLES31.glActiveTexture(GLES31.GL_TEXTURE0 + textureCount)
-        GLES31.glGenTextures(1, buf);
-        texture = buf[0];
-        Log.d(TAG, "texture: $texture")
+        GLES31.glGenTextures(1, buf)
+        texture = buf[0]
         GLES31.glBindTexture(GLES31.GL_TEXTURE_2D, texture)
 
-        GLES31.glPixelStorei(GLES31.GL_UNPACK_ALIGNMENT, 1);
+        GLES31.glPixelStorei(GLES31.GL_UNPACK_ALIGNMENT, 1)
         GLES31.glTexImage2D(
             GLES31.GL_TEXTURE_2D,
             0,
@@ -42,17 +41,16 @@ class Texture(
             GLES31.GL_UNSIGNED_BYTE,
             data
         )
-        Log.d(TAG, "error: " + GLES31.glGetError())
         GLES31.glTexParameteri(
             GLES31.GL_TEXTURE_2D,
             GLES31.GL_TEXTURE_MAG_FILTER,
             GLES31.GL_NEAREST
-        );
+        )
         GLES31.glTexParameteri(
             GLES31.GL_TEXTURE_2D,
             GLES31.GL_TEXTURE_MIN_FILTER,
             GLES31.GL_NEAREST
-        );
+        )
         GLES31.glBindTexture(GLES31.GL_TEXTURE_2D, 0)
     }
 
@@ -94,17 +92,17 @@ class Texture(
     fun write(x: Int, y: Int, w: Int, h: Int, data: Triple<Float, Float, Float>) {
         val (r, g, b) = data
         val newCellInfo = CellInfo(
-                Pair(x, y),
-                Pair(w, h),
-                Triple(
-                    (r * 255).toInt().toByte(),
-                    (g * 255).toInt().toByte(),
-                    (b * 255).toInt().toByte()
-                )
+            Pair(x, y),
+            Pair(w, h),
+            Triple(
+                (r * 255).toInt().toByte(),
+                (g * 255).toInt().toByte(),
+                (b * 255).toInt().toByte()
             )
-        if(prevCellInfo == newCellInfo) return
+        )
+        if (prevCellInfo == newCellInfo) return
 
-        colorUpdateQueue.push( newCellInfo )
+        colorUpdateQueue.push(newCellInfo)
         prevCellInfo = newCellInfo
     }
 

@@ -1,29 +1,23 @@
 package jp.ac.titech.itpro.sdl.circulardotter.component
 
 import android.opengl.GLES31
-import android.util.Log
 import jp.ac.titech.itpro.sdl.circulardotter.Component
 import jp.ac.titech.itpro.sdl.circulardotter.GlobalInfo
 import jp.ac.titech.itpro.sdl.circulardotter.gl.ShaderProgram
 import jp.ac.titech.itpro.sdl.circulardotter.gl.build
-import org.apache.commons.math3.geometry.euclidean.twod.Vector2D
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
-import kotlin.math.abs
 
-enum class ButtonState {
-    Pushed,
-    Released
+enum class ControllerMode {
+    ColorWheel
 }
 
-class DrawButton : Component {
-    private val TAG = DrawButton::class.qualifiedName
-    private var buttonState: ButtonState = ButtonState.Released
-    private var pushActionIndex: Int? = null
-    private var windowWidth: Float = 1.0f
-    private var windowHeight: Float = 1.0f
+class Controller: Component {
+    private var windowWidth = 1.0f
+    private var windowHeight = 1.0f
 
+    private var mode = ControllerMode.ColorWheel
     private val vertexBuffer: FloatBuffer
     private val shaderProgram: ShaderProgram
 
@@ -32,9 +26,10 @@ class DrawButton : Component {
             order(ByteOrder.nativeOrder())
             asFloatBuffer().apply {
                 put(vertices)
-                position(0)
+                rewind()
             }
         }
+
         shaderProgram = ShaderProgram.setFragment(fragmentShader).setVertex(vertexShader).build()
     }
 
@@ -53,12 +48,14 @@ class DrawButton : Component {
             )
         }
 
+        // uniform: iResolution
         shaderProgram.getUniformLocation("iResolution").also {
             GLES31.glUniform2f(it, windowWidth, windowHeight)
         }
 
-        shaderProgram.getUniformLocation("iPushed").also {
-            GLES31.glUniform1i(it, if (buttonState == ButtonState.Pushed) 1 else 0)
+        // uniform: iInclination
+        shaderProgram.getUniformLocation("iInclination").also {
+            GLES31.glUniform1f(it, -globalInfo.inclination.toFloat())
         }
 
         GLES31.glDrawArrays(GLES31.GL_TRIANGLE_FAN, 0, verticesCnt)
@@ -71,31 +68,10 @@ class DrawButton : Component {
         windowHeight = height.toFloat()
     }
 
-    fun onTouched(actionIndex: Int, x: Float, y: Float) {
-        if (isOnButton(x, y)) {
-            buttonState = ButtonState.Pushed
-            pushActionIndex = actionIndex
-        }
-    }
-
-    fun onReleased(actionIndex: Int, x: Float, y: Float) {
-        if (pushActionIndex == actionIndex) {
-            buttonState = ButtonState.Released
-            pushActionIndex = null
-        }
-    }
-
-    private fun isOnButton(x: Float, y: Float): Boolean {
-        val cx = x - windowWidth * 0.5
-        val cy = y - windowHeight * 0.5
-        val notOnCanvas = abs(cx) > windowHeight * 0.5
-        val isOnCircle = Vector2D(cx, cy).normSq < windowHeight * windowHeight * 0.5
-        return notOnCanvas && isOnCircle
-    }
-
     companion object {
         const val DIMENSION = 2
         const val STRIDE = DIMENSION * 4
+
         val vertices = floatArrayOf(
             -1.0f, -1.0f,
             1.0f, -1.0f,
@@ -119,16 +95,34 @@ void main() {
 precision mediump float;
 
 in vec2 coord;
-uniform int iPushed;
+uniform float iInclination;
 uniform vec2 iResolution;
 out vec4 fragColor;
 
 const float sqrt2Halved = 0.70710678118;
+const float RING_WIDTH = 0.2;
+const float PI = 3.14159265358;
+const float TWO_PI = 6.28318530718;
+
+const float a = 0.95492965855;
+const float b = 1.0471975512;
+
+float atan2(in float y, in float x) {
+    return x == 0.0 ? sign(y)*PI*.5 : atan(y, x);
+}
 
 void main() {
     vec2 coordCentered = vec2(coord.x * iResolution.x / iResolution.y, coord.y);
-    if(abs(gl_FragCoord.x * 2.0 - iResolution.x) < iResolution.y || length(coordCentered) > sqrt2Halved) discard;
-    fragColor = (iPushed > 0) ? vec4(0.0, 0.0, 1.0, 1.0) : vec4(0.0, 1.0, 0.0, 1.0);
+    if(length(coordCentered) < sqrt2Halved || length(coordCentered) > sqrt2Halved + RING_WIDTH) discard;
+    float theta = mod(iInclination + atan2(coordCentered.y, coordCentered.x) + TWO_PI, TWO_PI);
+    
+    vec3 color = (theta < b) ? vec3(1., a * theta, 0.)
+        : (theta < 2. * b) ? vec3(-a * (theta - 2. * b), 1., 0.)
+        : (theta < PI) ? vec3(0., 1., a * (theta - 2. * b))
+        : (theta < 4. * b) ? vec3(0., -a * (theta - 4. * b), 1.)
+        : (theta < 5. * b) ? vec3(a * (theta - 4. * b), 0., 1.)
+        : vec3(1., 0., -a * (theta - 6. * b));
+    fragColor = vec4(color, 1.);
 }
         """
     }

@@ -4,6 +4,7 @@ import android.opengl.GLES31
 import android.util.Log
 import androidx.core.math.MathUtils.clamp
 import jp.ac.titech.itpro.sdl.circulardotter.Component
+import jp.ac.titech.itpro.sdl.circulardotter.GlobalInfo
 import jp.ac.titech.itpro.sdl.circulardotter.gl.ShaderProgram
 import jp.ac.titech.itpro.sdl.circulardotter.gl.Texture
 import jp.ac.titech.itpro.sdl.circulardotter.gl.build
@@ -68,14 +69,12 @@ class Canvas(private var color: Triple<Float, Float, Float> = Triple(0.0f, 0.0f,
         windowHeight = height.toFloat()
     }
 
-    override fun draw() {
-        Log.d(TAG, "drawing...");
+    override fun draw(globalInfo: GlobalInfo) {
         // GLES31.glTexImage2D()
         shaderProgram.use()
 
         // attribute: pos
         val pos = shaderProgram.getAttribLocation("pos").also {
-            Log.d(TAG, "pos: $it")
             GLES31.glEnableVertexAttribArray(it)
             GLES31.glVertexAttribPointer(
                 it,
@@ -88,37 +87,35 @@ class Canvas(private var color: Triple<Float, Float, Float> = Triple(0.0f, 0.0f,
         }
 
         // uniform: iResolution
-        val iResolution = shaderProgram.getUniformLocation("iResolution").also {
-            Log.d(TAG, "iResolution: $it")
+        shaderProgram.getUniformLocation("iResolution").also {
             GLES31.glUniform2f(it, windowWidth, windowHeight)
         }
 
         // uniform: canvasTexture
         val textureIndex = canvasTexture.use();
-        Log.d(TAG, "textureIndex: $textureIndex")
-        val texture = shaderProgram.getUniformLocation("canvasTexture").also {
-            Log.d(TAG, "canvasTexture: $it")
+        shaderProgram.getUniformLocation("canvasTexture").also {
             GLES31.glUniform1i(it, textureIndex)
         }
 
         // uniform: showGrid, showCentralGrid
         shaderProgram.getUniformLocation("showGrid").also {
-            Log.d(TAG, "showGrid: $it")
             GLES31.glUniform2i(it, if (showGrid) 1 else 0, if (showCentralGrid) 1 else 0)
         }
 
         // uniform: imageDimension
         shaderProgram.getUniformLocation("imageDimension").also {
-            Log.d(TAG, "imageDimension: $it")
             GLES31.glUniform2f(it, imageWidth.toFloat(), imageHeight.toFloat())
         }
 
         // uniform: cursor
         shaderProgram.getUniformLocation("cursorPos").also {
-            Log.d(TAG, "cursorPos: $it")
             val (x, y) = cursor
             GLES31.glUniform2i(it, (x * imageWidth).toInt(), (y * imageHeight).toInt())
-            Log.d(TAG, "x: " + (x * imageWidth).toInt() + ", y: " + (y * imageHeight).toInt())
+        }
+
+        // uniform: iTime
+        shaderProgram.getUniformLocation("iTime").also {
+            GLES31.glUniform1f(it, globalInfo.time)
         }
 
         GLES31.glDrawArrays(GLES31.GL_TRIANGLE_FAN, 0, verticesCnt)
@@ -133,7 +130,6 @@ class Canvas(private var color: Triple<Float, Float, Float> = Triple(0.0f, 0.0f,
         // div by width, and y is reversed
         val ny = clamp(y + dy / windowHeight, 0.0f, 0.9999f)
 
-        Log.d(TAG, "(x, y, dx, dy, nx, ny) = ($x, $y, $dx, $dy, $nx, $ny)")
         cursor = Pair(nx, ny)
     }
 
@@ -188,6 +184,7 @@ void main() {
 precision mediump float;
 
 uniform sampler2D canvasTexture;
+uniform float iTime;
 uniform vec2 iResolution;
 uniform vec2 imageDimension;
 // x: showGrid, y: showCentralGrid
@@ -213,7 +210,9 @@ void main() {
     vec2 cellSize = 1.0 / imageDimension;
     
     // cursor
-    if(cursorPos == ivec2(floor(uvCentered * imageDimension)) && fillGrid(uvCentered, cellSize, GRID_WIDTH * 2., vec4(1.0, 0.0, 0.0, 1.0))) {
+    float flashColor = abs(fract(iTime) - .5) * 2.;
+    if(cursorPos == ivec2(floor(uvCentered * imageDimension))
+        && fillGrid(uvCentered, cellSize, GRID_WIDTH * 2., vec4(1., flashColor, flashColor, 1.0))) {
         return;
     }
     
@@ -226,7 +225,7 @@ void main() {
         }
     }
     
-    // normal grid and cursor
+    // normal grid
     if(showGrid.x > 0 && fillGrid(uvCentered, cellSize, GRID_WIDTH, vec4(vec3(0.7), 1.0))) {
         return;
     }
