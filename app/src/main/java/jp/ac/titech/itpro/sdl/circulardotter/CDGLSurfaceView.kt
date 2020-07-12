@@ -1,18 +1,15 @@
 package jp.ac.titech.itpro.sdl.circulardotter
 
-import android.app.Activity
 import android.content.Context
 import android.opengl.GLSurfaceView
 import android.util.AttributeSet
-import android.util.DisplayMetrics
 import android.util.Log
-import android.view.Display
 import android.view.MotionEvent
 
 class CDGLSurfaceView(context: Context, attributeSet: AttributeSet) :
     GLSurfaceView(context, attributeSet) {
-    private var prevX: Float = 0f;
-    private var prevY: Float = 0f;
+    private var prevX = floatArrayOf(0.0f, 0.0f, 0.0f, 0.0f);
+    private var prevY = floatArrayOf(0.0f, 0.0f, 0.0f, 0.0f);
     private var renderer = Renderer()
 
     init {
@@ -26,21 +23,26 @@ class CDGLSurfaceView(context: Context, attributeSet: AttributeSet) :
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
-        val x: Float = event.x
-        val y: Float = event.y
+        val actionIndex = event.actionIndex
+        val x = event.getX(actionIndex)
+        val y = event.getY(actionIndex)
 
-        when (event.action) {
-            MotionEvent.ACTION_DOWN -> {
-                renderer.onTouch(x, y)
-                prevX = x
-                prevY = y
+        Log.d("hoge", "$actionIndex"+(event.action and 0xff))
+        when (event.action and MotionEvent.ACTION_MASK) {
+            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN  -> {
+                renderer.onTouch(actionIndex, x, y)
+                prevX[actionIndex] = x
+                prevY[actionIndex] = y
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
+                renderer.onRelease(actionIndex, x, y)
             }
             MotionEvent.ACTION_MOVE -> {
-                val dx = x - prevX;
-                val dy = y - prevY;
+                val dx = event.x - prevX[actionIndex]
+                val dy = event.y - prevY[actionIndex]
                 renderer.onScroll(dx, dy)
-                prevX = x
-                prevY = y
+                prevX[actionIndex] = x
+                prevY[actionIndex] = y
             }
         }
 

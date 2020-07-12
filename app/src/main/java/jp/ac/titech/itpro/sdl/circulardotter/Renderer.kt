@@ -34,13 +34,23 @@ class Renderer : GLSurfaceView.Renderer {
         canvas = Canvas()
     }
 
-    fun onTouch(x: Float, y: Float) {
+    fun onTouch(actionIndex: Int, x: Float, y: Float) {
+        // 色の取得、塗り
         Log.d(TAG, "touched: ($x, $y)")
+        if(actionIndex > 0) {
+            canvas.touched = true
+            canvas.requestDraw()
+        }
+    }
+
+    fun onRelease(actionIndex: Int, x: Float, y: Float) {
+        canvas.touched = false
     }
 
     fun onScroll(dx: Float, dy: Float) {
         Log.d(TAG, "scrolled: ($dx, $dy)")
         // y reversed
         canvas.moveCursor(dx, -dy)
+        canvas.requestDraw()
     }
 }

@@ -12,24 +12,27 @@ import java.nio.ByteOrder
 import java.nio.FloatBuffer
 import java.util.*
 
-class Canvas : Component {
+class Canvas(private var color: Triple<Float, Float, Float> = Triple(0.0f, 0.0f, 0.0f)) :
+    Component {
     private val TAG = Canvas::class.qualifiedName
 
     // private val pixels: Buffer
     private val vertexBuffer: FloatBuffer
     private val shaderProgram: ShaderProgram
 
-    private var imageWidth = 32;
-    private var imageHeight = 32;
+    private var imageWidth = 32
+    private var imageHeight = 32
     private var imageBuffer: ByteBuffer
 
-    private val canvasTexture: Texture;
+    private val canvasTexture: Texture
 
     private var showCentralGrid = true
     private var showGrid = true
 
-    private var windowWidth = 1.0f;
-    private var windowHeight = 1.0f;
+    private var windowWidth = 1.0f
+    private var windowHeight = 1.0f
+
+    var touched = false
 
     // uv coord
     private var cursor = Pair<Float, Float>(0.0f, 0.0f)
@@ -144,16 +147,20 @@ class Canvas : Component {
         showCentralGrid = v
     }
 
-    fun setColor(x: Int, y: Int, color: Triple<Int, Int, Int>) {
-        val buffer = ByteBuffer.allocateDirect(3).run {
-            order(ByteOrder.nativeOrder())
-            val (r, g, b) = color
-            put(r.toByte())
-            put(g.toByte())
-            put(b.toByte())
-            rewind()
+    fun setColor(color: Triple<Float, Float, Float>) {
+        this.color = color
+    }
+
+    fun requestDraw() {
+        if (!touched) return
+        val (x, y) = cursor
+        // pixel to imageCoord
+        val nx = Math.floor((x * imageWidth).toDouble()).toInt()
+        val ny = Math.floor((y * imageHeight).toDouble()).toInt()
+        assert(0 <= nx && nx < imageWidth.toInt() && 0 <= ny && ny < imageHeight.toInt()) {
+            Log.e(TAG, "pixel range error")
         }
-        canvasTexture.write(x, y, 1, 1, buffer)
+        canvasTexture.write(nx, ny, 1, 1, color)
     }
 
     companion object {
