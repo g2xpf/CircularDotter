@@ -10,7 +10,6 @@ import jp.ac.titech.itpro.sdl.circulardotter.gl.build
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
-import java.util.*
 
 class Canvas(private var color: Triple<Float, Float, Float> = Triple(0.0f, 0.0f, 0.0f)) :
     Component {
@@ -47,7 +46,6 @@ class Canvas(private var color: Triple<Float, Float, Float> = Triple(0.0f, 0.0f,
         }
 
         shaderProgram = ShaderProgram.setFragment(fragmentShader).setVertex(vertexShader).build()
-        Log.d(TAG, "status: " + GLES31.glGetError())
 
         imageBuffer = ByteBuffer.allocateDirect(imageWidth * imageHeight * 3).run() {
             order(ByteOrder.nativeOrder())

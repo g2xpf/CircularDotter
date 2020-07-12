@@ -27,15 +27,14 @@ class CDGLSurfaceView(context: Context, attributeSet: AttributeSet) :
         val x = event.getX(actionIndex)
         val y = event.getY(actionIndex)
 
-        Log.d("hoge", "$actionIndex"+(event.action and 0xff))
         when (event.action and MotionEvent.ACTION_MASK) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN  -> {
-                renderer.onTouch(actionIndex, x, y)
+                renderer.onTouched(actionIndex, x, y)
                 prevX[actionIndex] = x
                 prevY[actionIndex] = y
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
-                renderer.onRelease(actionIndex, x, y)
+                renderer.onReleased(actionIndex, x, y)
             }
             MotionEvent.ACTION_MOVE -> {
                 val dx = event.x - prevX[actionIndex]
