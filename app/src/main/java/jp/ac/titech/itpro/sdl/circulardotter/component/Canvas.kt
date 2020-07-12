@@ -18,8 +18,8 @@ class Canvas : Component {
     private val vertexBuffer: FloatBuffer
     private val shaderProgram: ShaderProgram
 
-    private var imageWidth = 32;
-    private var imageHeight = 32;
+    private var imageWidth = 8;
+    private var imageHeight = 8;
     private var imageBuffer: ByteBuffer
 
     private val canvasTexture: Texture;
@@ -29,6 +29,8 @@ class Canvas : Component {
 
     private var width = 1.0f;
     private var height = 1.0f;
+
+    private var cursor = Pair<Int, Int>(2, 2)
 
     init {
         vertexBuffer = ByteBuffer.allocateDirect(vertices.size * 4).run() {
@@ -108,6 +110,11 @@ class Canvas : Component {
             GLES31.glUniform2f(it, imageWidth.toFloat(), imageHeight.toFloat())
         }
 
+        // uniform: cursor
+        shaderProgram.getUniformLocation("cursorPos").also {
+            Log.d(TAG, "cursorPos: $it")
+            GLES31.glUniform2i(it, cursor.component1(), cursor.component2())
+        }
 
         GLES31.glDrawArrays(GLES31.GL_TRIANGLE_FAN, 0, verticesCnt)
 
@@ -153,35 +160,43 @@ uniform vec2 iResolution;
 uniform vec2 imageDimension;
 // x: showGrid, y: showCentralGrid
 uniform ivec2 showGrid;
+uniform ivec2 cursorPos;
+
 in vec2 uv;
+
 out vec4 fragColor;
 
-const float GRID_RATIO = 0.05;
+const float GRID_WIDTH = 0.001;
+const float CENTRAL_GRID_WIDTH = GRID_WIDTH * 2.;
+
+bool fillGrid(in vec2 p, in vec2 cellSize, in float gridWidth, in vec4 color) {
+    vec2 roundWidth = cellSize * .5 - abs(mod(p, cellSize) - (cellSize * .5)); 
+    return (roundWidth.x < gridWidth || roundWidth.y < gridWidth) && (fragColor = color, true);
+}
 
 void main() {
     if(abs(gl_FragCoord.x * 2.0 - iResolution.x) > iResolution.y) discard;
     
     vec2 uvCentered = vec2(clamp((uv.x - .5) * iResolution.x / iResolution.y + .5, 0.0, 1.0), uv.y);
     vec2 cellSize = 1.0 / imageDimension;
-    vec2 gridBorder = cellSize * GRID_RATIO;
-    vec2 centralGridBorder = gridBorder * 2.0;
+    
+    // cursor
+    if(cursorPos == ivec2(floor(uvCentered * imageDimension)) && fillGrid(uvCentered, cellSize, GRID_WIDTH * 2., vec4(1.0, 0.0, 0.0, 1.0))) {
+        return;
+    }
     
     // central grid
     if(showGrid.y > 0) {
         vec2 width = abs(uvCentered - vec2(.5));
-        if(width.x < centralGridBorder.x || width.y < centralGridBorder.y) {
+        if(width.x < CENTRAL_GRID_WIDTH || width.y < CENTRAL_GRID_WIDTH) {
             fragColor = vec4(vec3(0.0), 1.0);
             return;
         }
     }
     
-    // normal grid
-    if(showGrid.x > 0) {
-        vec2 roundWidth = cellSize * .5 - abs(mod(uvCentered, cellSize) - (cellSize * .5)); 
-        if(roundWidth.x < gridBorder.x || roundWidth.y < gridBorder.y) {
-            fragColor = vec4(vec3(0.3), 1.0);
-            return;
-        }
+    // normal grid and cursor
+    if(showGrid.x > 0 && fillGrid(uvCentered, cellSize, GRID_WIDTH, vec4(vec3(0.3), 1.0))) {
+        return;
     }
     
     fragColor = vec4(texture(canvasTexture, uvCentered).xyz, 1.0);
