@@ -14,8 +14,8 @@ enum class ControllerMode {
 }
 
 class Controller: Component {
-    private var windowWidth = 1.0f
-    private var windowHeight = 1.0f
+    override var windowWidth = 1.0f
+    override var windowHeight = 1.0f
 
     private var mode = ControllerMode.ColorWheel
     private val vertexBuffer: FloatBuffer

@@ -4,6 +4,8 @@ import android.opengl.GLES31
 import android.util.Log
 import jp.ac.titech.itpro.sdl.circulardotter.Component
 import jp.ac.titech.itpro.sdl.circulardotter.GlobalInfo
+import jp.ac.titech.itpro.sdl.circulardotter.PointerIndex
+import jp.ac.titech.itpro.sdl.circulardotter.Sender
 import jp.ac.titech.itpro.sdl.circulardotter.gl.ShaderProgram
 import jp.ac.titech.itpro.sdl.circulardotter.gl.build
 import org.apache.commons.math3.geometry.euclidean.twod.Vector2D
@@ -17,15 +19,16 @@ enum class ButtonState {
     Released
 }
 
-class DrawButton : Component {
+class DrawButton : Component, Sender<Canvas, ShouldDraw> {
     private val TAG = DrawButton::class.qualifiedName
-    private var buttonState: ButtonState = ButtonState.Released
-    private var pushActionIndex: Int? = null
-    private var windowWidth: Float = 1.0f
-    private var windowHeight: Float = 1.0f
+    private var state: ButtonState = ButtonState.Released
+    private var pointerIndex: Int? = null
 
     private val vertexBuffer: FloatBuffer
     private val shaderProgram: ShaderProgram
+
+    override var windowWidth: Float = 1.0f
+    override var windowHeight: Float = 1.0f
 
     init {
         vertexBuffer = ByteBuffer.allocateDirect(vertices.size * 4).run() {
@@ -58,7 +61,7 @@ class DrawButton : Component {
         }
 
         shaderProgram.getUniformLocation("iPushed").also {
-            GLES31.glUniform1i(it, if (buttonState == ButtonState.Pushed) 1 else 0)
+            GLES31.glUniform1i(it, if (state == ButtonState.Pushed) 1 else 0)
         }
 
         GLES31.glDrawArrays(GLES31.GL_TRIANGLE_FAN, 0, verticesCnt)
@@ -66,22 +69,19 @@ class DrawButton : Component {
         GLES31.glDisableVertexAttribArray(pos)
     }
 
-    override fun onWindowResized(width: Int, height: Int) {
-        windowWidth = width.toFloat()
-        windowHeight = height.toFloat()
-    }
-
-    fun onTouched(actionIndex: Int, x: Float, y: Float) {
+    override fun onTouch(pointerIndex: PointerIndex, x: Float, y: Float) {
         if (isOnButton(x, y)) {
-            buttonState = ButtonState.Pushed
-            pushActionIndex = actionIndex
+            Log.d(TAG, "touched: ${this.pointerIndex} -> $pointerIndex")
+            state = ButtonState.Pushed
+            this.pointerIndex = pointerIndex
         }
     }
 
-    fun onReleased(actionIndex: Int, x: Float, y: Float) {
-        if (pushActionIndex == actionIndex) {
-            buttonState = ButtonState.Released
-            pushActionIndex = null
+    override fun onRelease(pointerIndex: PointerIndex, x: Float, y: Float) {
+        Log.d(TAG, "released: ${this.pointerIndex} -> $pointerIndex")
+        if (this.pointerIndex == pointerIndex) {
+            state = ButtonState.Released
+            this.pointerIndex = null
         }
     }
 
@@ -91,6 +91,14 @@ class DrawButton : Component {
         val notOnCanvas = abs(cx) > windowHeight * 0.5
         val isOnCircle = Vector2D(cx, cy).normSq < windowHeight * windowHeight * 0.5
         return notOnCanvas && isOnCircle
+    }
+
+    override fun send(receiver: Canvas) {
+        receiver.receive(ShouldDraw(isPushed()))
+    }
+
+    private fun isPushed(): Boolean {
+        return state == ButtonState.Pushed
     }
 
     companion object {

@@ -1,5 +1,6 @@
 package jp.ac.titech.itpro.sdl.circulardotter
 
+import android.graphics.Point
 import android.opengl.GLES10.GL_LINE_SMOOTH
 import android.opengl.GLES31
 import android.opengl.GLSurfaceView
@@ -49,26 +50,26 @@ class Renderer : GLSurfaceView.Renderer {
         controller = Controller()
     }
 
-    fun onTouched(actionIndex: Int, x: Float, y: Float) {
-        // 色の取得、塗り
-        drawButton.onTouched(actionIndex, x, y)
-        if(actionIndex > 0) {
-            // canvas.touched = true
-            // canvas.requestDraw()
-        }
+    fun onTouch(pointerIndex: PointerIndex, x: Float, y: Float) {
+        Log.d(TAG, "touched: ($pointerIndex, $x, $y)")
+        drawButton.onTouch(pointerIndex, x, y)
+        drawButton.send(canvas)
+        canvas.onTouch(pointerIndex, x, y)
     }
 
-    fun onReleased(actionIndex: Int, x: Float, y: Float) {
-        drawButton.onReleased(actionIndex, x, y)
-        if(actionIndex > 0) {
-            // canvas.touched = false
-        }
+    fun onRelease(pointerIndex: PointerIndex, x: Float, y: Float) {
+        Log.d(TAG, "released: ($pointerIndex, $x, $y)")
+        drawButton.onRelease(pointerIndex, x, y)
+        drawButton.send(canvas)
+        canvas.onRelease(pointerIndex, x, y)
     }
 
-    fun onScroll(dx: Float, dy: Float) {
+    fun onScroll(pointerIndex: PointerIndex, dx: Float, dy: Float) {
+        Log.d(TAG, "scrolled: ($pointerIndex, $dx, $dy)")
         // y reversed
-        canvas.moveCursor(dx, -dy)
-        canvas.requestDraw()
+        drawButton.onScroll(pointerIndex, dx, -dy)
+        drawButton.send(canvas)
+        canvas.onScroll(pointerIndex, dx, -dy)
     }
 
     fun setGlobalInfo(globalInfo: GlobalInfo) {

@@ -89,6 +89,7 @@ class Texture(
         return textureCount
     }
 
+    // write CellInfo to the texture only when it's not equivalent to the previous one
     fun write(x: Int, y: Int, w: Int, h: Int, data: Triple<Float, Float, Float>) {
         val (r, g, b) = data
         val newCellInfo = CellInfo(
@@ -101,6 +102,7 @@ class Texture(
             )
         )
         if (prevCellInfo == newCellInfo) return
+
 
         colorUpdateQueue.push(newCellInfo)
         prevCellInfo = newCellInfo
@@ -116,4 +118,5 @@ class Texture(
         val color: Triple<Byte, Byte, Byte>
     ) {
     }
+
 }

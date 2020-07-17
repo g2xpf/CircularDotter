@@ -5,15 +5,21 @@ import android.util.Log
 import androidx.core.math.MathUtils.clamp
 import jp.ac.titech.itpro.sdl.circulardotter.Component
 import jp.ac.titech.itpro.sdl.circulardotter.GlobalInfo
+import jp.ac.titech.itpro.sdl.circulardotter.PointerIndex
+import jp.ac.titech.itpro.sdl.circulardotter.Receiver
 import jp.ac.titech.itpro.sdl.circulardotter.gl.ShaderProgram
 import jp.ac.titech.itpro.sdl.circulardotter.gl.Texture
 import jp.ac.titech.itpro.sdl.circulardotter.gl.build
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
+import kotlin.math.abs
+import kotlin.math.floor
+
+data class ShouldDraw(val shouldDraw: Boolean)
 
 class Canvas(private var color: Triple<Float, Float, Float> = Triple(0.0f, 0.0f, 0.0f)) :
-    Component {
+    Component, Receiver<ShouldDraw> {
     private val TAG = Canvas::class.qualifiedName
 
     // private val pixels: Buffer
@@ -29,10 +35,11 @@ class Canvas(private var color: Triple<Float, Float, Float> = Triple(0.0f, 0.0f,
     private var showCentralGrid = true
     private var showGrid = true
 
-    private var windowWidth = 1.0f
-    private var windowHeight = 1.0f
+    override var windowWidth = 1.0f
+    override var windowHeight = 1.0f
 
-    var touched = false
+    private var pointerIndex: Int? = null
+    var shouldDraw = false
 
     // uv coord
     private var cursor = Pair<Float, Float>(0.0f, 0.0f)
@@ -123,7 +130,20 @@ class Canvas(private var color: Triple<Float, Float, Float> = Triple(0.0f, 0.0f,
         GLES31.glDisableVertexAttribArray(pos)
     }
 
-    fun moveCursor(dx: Float, dy: Float) {
+    override fun onTouch(pointerIndex: PointerIndex, x: Float, y: Float) {
+        val isOnCanvas = abs(x - windowWidth * 0.5) <= windowHeight * 0.5
+        if (isOnCanvas) {
+            this.pointerIndex = pointerIndex
+        }
+
+        Log.d(TAG, "shouldDraw: $shouldDraw")
+        if (shouldDraw) requestDraw()
+    }
+
+    override fun onScroll(pointerIndex: PointerIndex, dx: Float, dy: Float) {
+        Log.d(TAG, "pointerIndex: $pointerIndex")
+        Log.d(TAG, "this.pointerIndex: ${this.pointerIndex}")
+        if (this.pointerIndex != pointerIndex) return
         val (x, y) = cursor
 
         val nx = clamp(x + dx / windowHeight, 0.0f, 0.9999f)
@@ -131,6 +151,12 @@ class Canvas(private var color: Triple<Float, Float, Float> = Triple(0.0f, 0.0f,
         val ny = clamp(y + dy / windowHeight, 0.0f, 0.9999f)
 
         cursor = Pair(nx, ny)
+
+        if (shouldDraw) requestDraw()
+    }
+
+    override fun receive(message: ShouldDraw) {
+        shouldDraw = message.shouldDraw
     }
 
     fun setGrid(v: Boolean) {
@@ -145,13 +171,13 @@ class Canvas(private var color: Triple<Float, Float, Float> = Triple(0.0f, 0.0f,
         this.color = color
     }
 
-    fun requestDraw() {
-        if (!touched) return
+    private fun requestDraw() {
+        Log.d(TAG, "draw requested")
         val (x, y) = cursor
         // pixel to imageCoord
-        val nx = Math.floor((x * imageWidth).toDouble()).toInt()
-        val ny = Math.floor((y * imageHeight).toDouble()).toInt()
-        assert(0 <= nx && nx < imageWidth.toInt() && 0 <= ny && ny < imageHeight.toInt()) {
+        val nx = floor((x * imageWidth).toDouble()).toInt()
+        val ny = floor((y * imageHeight).toDouble()).toInt()
+        assert((nx in 0 until imageWidth) && (ny in 0 until imageHeight)) {
             Log.e(TAG, "pixel range error")
         }
         canvasTexture.write(nx, ny, 1, 1, color)
