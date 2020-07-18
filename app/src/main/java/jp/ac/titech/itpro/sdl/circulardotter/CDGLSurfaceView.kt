@@ -79,7 +79,7 @@ class CDGLSurfaceView(context: Context, attributeSet: AttributeSet) :
 
                     // only moving cursor
                     if (abs(dx) + abs(dy) > 0.0) {
-                        renderer.onScroll(memoryIndex, dx, dy)
+                        renderer.onScroll(memoryIndex, x, y, dx, dy)
                         prevX[memoryIndex] = x
                         prevY[memoryIndex] = y
                     }

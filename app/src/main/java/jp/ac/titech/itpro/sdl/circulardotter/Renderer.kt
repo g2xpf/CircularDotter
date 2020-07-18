@@ -8,11 +8,18 @@ import android.util.Log
 import jp.ac.titech.itpro.sdl.circulardotter.component.Canvas
 import jp.ac.titech.itpro.sdl.circulardotter.component.Controller
 import jp.ac.titech.itpro.sdl.circulardotter.component.DrawButton
+import org.apache.commons.math3.geometry.euclidean.twod.Vector2D
 import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 
+data class RendererState (
+    var brushColor: Triple<Float, Float, Float>
+)
+
 class Renderer : GLSurfaceView.Renderer {
     private val TAG = Renderer::class.qualifiedName
+
+    private var rendererState = RendererState(Triple(0.0f, 0.0f, 0.0f))
 
     private lateinit var canvas: Canvas
     private lateinit var drawButton: DrawButton
@@ -24,13 +31,12 @@ class Renderer : GLSurfaceView.Renderer {
     private var globalInfo = GlobalInfo(0.0, 0.0f)
 
     override fun onDrawFrame(unused: GL10) {
-        // Log.d(TAG, "onDrawFrame")
-        GLES31.glClearColor(0.3f, 0.3f, 0.3f, 1.0f)
+        GLES31.glClearColor(0.0f, 0.0f, 0.0f, 1.0f)
         GLES31.glClear(GL10.GL_COLOR_BUFFER_BIT or GL10.GL_DEPTH_BUFFER_BIT)
 
-        canvas.draw(globalInfo)
-        drawButton.draw(globalInfo)
-        controller.draw(globalInfo)
+        canvas.draw()
+        drawButton.draw()
+        controller.draw()
     }
 
     override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) {
@@ -45,34 +51,44 @@ class Renderer : GLSurfaceView.Renderer {
 
     override fun onSurfaceCreated(gl: GL10?, config: EGLConfig?) {
         Log.d(TAG, "onSurfaceCreated")
-        canvas = Canvas()
-        drawButton = DrawButton()
-        controller = Controller()
+        canvas = Canvas(globalInfo, rendererState)
+        drawButton = DrawButton(globalInfo, rendererState)
+        controller = Controller(globalInfo, rendererState)
     }
 
     fun onTouch(pointerIndex: PointerIndex, x: Float, y: Float) {
         Log.d(TAG, "touched: ($pointerIndex, $x, $y)")
+        controller.onTouch(pointerIndex, x, y)
+
         drawButton.onTouch(pointerIndex, x, y)
         drawButton.send(canvas)
+
         canvas.onTouch(pointerIndex, x, y)
     }
 
     fun onRelease(pointerIndex: PointerIndex, x: Float, y: Float) {
         Log.d(TAG, "released: ($pointerIndex, $x, $y)")
+        controller.onRelease(pointerIndex, x, y)
+
         drawButton.onRelease(pointerIndex, x, y)
         drawButton.send(canvas)
+
         canvas.onRelease(pointerIndex, x, y)
     }
 
-    fun onScroll(pointerIndex: PointerIndex, dx: Float, dy: Float) {
+    fun onScroll(pointerIndex: PointerIndex, x: Float, y: Float, dx: Float, dy: Float) {
         Log.d(TAG, "scrolled: ($pointerIndex, $dx, $dy)")
         // y reversed
-        drawButton.onScroll(pointerIndex, dx, -dy)
+        controller.onScroll(pointerIndex, x, y, dx, -dy)
+
+        drawButton.onScroll(pointerIndex, x, y, dx, -dy)
         drawButton.send(canvas)
-        canvas.onScroll(pointerIndex, dx, -dy)
+
+        canvas.onScroll(pointerIndex, x, y, dx, -dy)
     }
 
     fun setGlobalInfo(globalInfo: GlobalInfo) {
-        this.globalInfo = globalInfo
+        this.globalInfo.time = globalInfo.time
+        this.globalInfo.inclination = globalInfo.inclination
     }
 }

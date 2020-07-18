@@ -1,19 +1,22 @@
 package jp.ac.titech.itpro.sdl.circulardotter
 
-class GlobalInfo (var inclination: Double, var time: Float){}
+data class GlobalInfo (var inclination: Double, var time: Float)
 typealias PointerIndex = Int
 
-interface Component {
-    var windowWidth: Float
-    var windowHeight: Float
+abstract class Component(var globalInfo: GlobalInfo) {
+    protected var windowWidth = 1.0f
+    protected var windowHeight = 1.0f
 
-    fun draw(globalInfo: GlobalInfo) {}
-    fun onWindowResized(width: Int, height: Int) {
+    open fun draw() {
+        update()
+    }
+    open fun update() {}
+    open fun onWindowResized(width: Int, height: Int) {
         windowWidth = width.toFloat()
         windowHeight = height.toFloat()
     }
 
-    fun onScroll(pointerIndex: PointerIndex, dx: Float, dy: Float) {}
-    fun onTouch(pointerIndex: PointerIndex, x: Float, y: Float) {}
-    fun onRelease(pointerIndex: PointerIndex, x: Float, y: Float) {}
+    open fun onScroll(pointerIndex: PointerIndex, x: Float, y: Float, dx: Float, dy: Float) {}
+    open fun onTouch(pointerIndex: PointerIndex, x: Float, y: Float) {}
+    open fun onRelease(pointerIndex: PointerIndex, x: Float, y: Float) {}
 }

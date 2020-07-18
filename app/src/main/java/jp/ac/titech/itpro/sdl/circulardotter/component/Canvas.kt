@@ -3,10 +3,7 @@ package jp.ac.titech.itpro.sdl.circulardotter.component
 import android.opengl.GLES31
 import android.util.Log
 import androidx.core.math.MathUtils.clamp
-import jp.ac.titech.itpro.sdl.circulardotter.Component
-import jp.ac.titech.itpro.sdl.circulardotter.GlobalInfo
-import jp.ac.titech.itpro.sdl.circulardotter.PointerIndex
-import jp.ac.titech.itpro.sdl.circulardotter.Receiver
+import jp.ac.titech.itpro.sdl.circulardotter.*
 import jp.ac.titech.itpro.sdl.circulardotter.gl.ShaderProgram
 import jp.ac.titech.itpro.sdl.circulardotter.gl.Texture
 import jp.ac.titech.itpro.sdl.circulardotter.gl.build
@@ -16,10 +13,13 @@ import java.nio.FloatBuffer
 import kotlin.math.abs
 import kotlin.math.floor
 
-data class ShouldDraw(val shouldDraw: Boolean)
+class Canvas(globalInfo: GlobalInfo, private val rendererState: RendererState) :
+    Component(globalInfo), Receiver<Canvas.Message> {
+    sealed class Message {
+        data class ShouldDraw(val shouldDraw: Boolean): Message()
+        data class Color(val color: Triple<Float, Float, Float>): Message()
+    }
 
-class Canvas(private var color: Triple<Float, Float, Float> = Triple(0.0f, 0.0f, 0.0f)) :
-    Component, Receiver<ShouldDraw> {
     private val TAG = Canvas::class.qualifiedName
 
     // private val pixels: Buffer
@@ -35,11 +35,9 @@ class Canvas(private var color: Triple<Float, Float, Float> = Triple(0.0f, 0.0f,
     private var showCentralGrid = true
     private var showGrid = true
 
-    override var windowWidth = 1.0f
-    override var windowHeight = 1.0f
-
     private var pointerIndex: Int? = null
-    var shouldDraw = false
+
+    private var shouldDraw = false
 
     // uv coord
     private var cursor = Pair<Float, Float>(0.0f, 0.0f)
@@ -71,12 +69,8 @@ class Canvas(private var color: Triple<Float, Float, Float> = Triple(0.0f, 0.0f,
         canvasTexture = Texture(imageWidth, imageHeight, imageBuffer)
     }
 
-    override fun onWindowResized(width: Int, height: Int) {
-        windowWidth = width.toFloat()
-        windowHeight = height.toFloat()
-    }
-
-    override fun draw(globalInfo: GlobalInfo) {
+    override fun draw() {
+        super.draw()
         // GLES31.glTexImage2D()
         shaderProgram.use()
 
@@ -140,9 +134,7 @@ class Canvas(private var color: Triple<Float, Float, Float> = Triple(0.0f, 0.0f,
         if (shouldDraw) requestDraw()
     }
 
-    override fun onScroll(pointerIndex: PointerIndex, dx: Float, dy: Float) {
-        Log.d(TAG, "pointerIndex: $pointerIndex")
-        Log.d(TAG, "this.pointerIndex: ${this.pointerIndex}")
+    override fun onScroll(pointerIndex: PointerIndex, x: Float, y: Float, dx: Float, dy: Float) {
         if (this.pointerIndex != pointerIndex) return
         val (x, y) = cursor
 
@@ -155,8 +147,12 @@ class Canvas(private var color: Triple<Float, Float, Float> = Triple(0.0f, 0.0f,
         if (shouldDraw) requestDraw()
     }
 
-    override fun receive(message: ShouldDraw) {
-        shouldDraw = message.shouldDraw
+    override fun receive(message: Message) {
+        when(message) {
+            is Message.ShouldDraw -> {
+                shouldDraw = message.shouldDraw
+            }
+        }
     }
 
     fun setGrid(v: Boolean) {
@@ -167,12 +163,7 @@ class Canvas(private var color: Triple<Float, Float, Float> = Triple(0.0f, 0.0f,
         showCentralGrid = v
     }
 
-    fun setColor(color: Triple<Float, Float, Float>) {
-        this.color = color
-    }
-
     private fun requestDraw() {
-        Log.d(TAG, "draw requested")
         val (x, y) = cursor
         // pixel to imageCoord
         val nx = floor((x * imageWidth).toDouble()).toInt()
@@ -180,7 +171,7 @@ class Canvas(private var color: Triple<Float, Float, Float> = Triple(0.0f, 0.0f,
         assert((nx in 0 until imageWidth) && (ny in 0 until imageHeight)) {
             Log.e(TAG, "pixel range error")
         }
-        canvasTexture.write(nx, ny, 1, 1, color)
+        canvasTexture.write(nx, ny, 1, 1, rendererState.brushColor)
     }
 
     companion object {

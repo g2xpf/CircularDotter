@@ -4,6 +4,3 @@ interface Receiver<Message> {
     fun receive(message: Message)
 }
 
-interface Sender<R : Receiver<Message>, Message> {
-    fun send(receiver: R)
-}

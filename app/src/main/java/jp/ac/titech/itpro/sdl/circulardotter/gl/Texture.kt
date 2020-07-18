@@ -7,7 +7,6 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.IntBuffer
 import java.util.*
-import kotlin.collections.ArrayDeque
 
 class Texture(
     private val width: Int,
@@ -103,18 +102,17 @@ class Texture(
         )
         if (prevCellInfo == newCellInfo) return
 
-
         colorUpdateQueue.push(newCellInfo)
         prevCellInfo = newCellInfo
     }
 
-    fun read(): ByteBuffer {
+    fun read(): Triple<Int, Int, ByteBuffer> {
         val buf = ByteBuffer.allocateDirect(width * height * 3).run {
             order(ByteOrder.nativeOrder())
         }
         GLES31.glPixelStorei(GLES31.GL_UNPACK_ALIGNMENT, 1)
         GLES31.glReadPixels(0, 0, width, height, GLES31.GL_RGB, GLES31.GL_UNSIGNED_BYTE, buf)
-        return buf
+        return Triple(width, height, buf)
     }
 
     companion object {

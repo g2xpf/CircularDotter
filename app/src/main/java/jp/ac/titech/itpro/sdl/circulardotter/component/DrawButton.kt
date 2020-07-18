@@ -2,10 +2,7 @@ package jp.ac.titech.itpro.sdl.circulardotter.component
 
 import android.opengl.GLES31
 import android.util.Log
-import jp.ac.titech.itpro.sdl.circulardotter.Component
-import jp.ac.titech.itpro.sdl.circulardotter.GlobalInfo
-import jp.ac.titech.itpro.sdl.circulardotter.PointerIndex
-import jp.ac.titech.itpro.sdl.circulardotter.Sender
+import jp.ac.titech.itpro.sdl.circulardotter.*
 import jp.ac.titech.itpro.sdl.circulardotter.gl.ShaderProgram
 import jp.ac.titech.itpro.sdl.circulardotter.gl.build
 import org.apache.commons.math3.geometry.euclidean.twod.Vector2D
@@ -19,16 +16,13 @@ enum class ButtonState {
     Released
 }
 
-class DrawButton : Component, Sender<Canvas, ShouldDraw> {
+class DrawButton(globalInfo: GlobalInfo, private val rendererState: RendererState) : Component(globalInfo) {
     private val TAG = DrawButton::class.qualifiedName
     private var state: ButtonState = ButtonState.Released
     private var pointerIndex: Int? = null
 
     private val vertexBuffer: FloatBuffer
     private val shaderProgram: ShaderProgram
-
-    override var windowWidth: Float = 1.0f
-    override var windowHeight: Float = 1.0f
 
     init {
         vertexBuffer = ByteBuffer.allocateDirect(vertices.size * 4).run() {
@@ -41,7 +35,8 @@ class DrawButton : Component, Sender<Canvas, ShouldDraw> {
         shaderProgram = ShaderProgram.setFragment(fragmentShader).setVertex(vertexShader).build()
     }
 
-    override fun draw(globalInfo: GlobalInfo) {
+    override fun draw() {
+        super.draw()
         shaderProgram.use()
 
         val pos = shaderProgram.getAttribLocation("pos").also {
@@ -62,6 +57,11 @@ class DrawButton : Component, Sender<Canvas, ShouldDraw> {
 
         shaderProgram.getUniformLocation("iPushed").also {
             GLES31.glUniform1i(it, if (state == ButtonState.Pushed) 1 else 0)
+        }
+
+        shaderProgram.getUniformLocation("iColor").also {
+            val (r, g, b) = rendererState.brushColor
+            GLES31.glUniform3f(it, r, g, b)
         }
 
         GLES31.glDrawArrays(GLES31.GL_TRIANGLE_FAN, 0, verticesCnt)
@@ -93,8 +93,8 @@ class DrawButton : Component, Sender<Canvas, ShouldDraw> {
         return notOnCanvas && isOnCircle
     }
 
-    override fun send(receiver: Canvas) {
-        receiver.receive(ShouldDraw(isPushed()))
+    fun send(receiver: Canvas) {
+        receiver.receive(Canvas.Message.ShouldDraw(isPushed()))
     }
 
     private fun isPushed(): Boolean {
@@ -127,6 +127,7 @@ void main() {
 precision mediump float;
 
 in vec2 coord;
+uniform vec3 iColor;
 uniform int iPushed;
 uniform vec2 iResolution;
 out vec4 fragColor;
@@ -136,8 +137,9 @@ const float sqrt2Halved = 0.70710678118;
 void main() {
     vec2 coordCentered = vec2(coord.x * iResolution.x / iResolution.y, coord.y);
     if(abs(gl_FragCoord.x * 2.0 - iResolution.x) < iResolution.y || length(coordCentered) > sqrt2Halved) discard;
-    fragColor = (iPushed > 0) ? vec4(0.0, 0.0, 1.0, 1.0) : vec4(0.0, 1.0, 0.0, 1.0);
+    fragColor = (iPushed > 0) ? vec4(vec3(0.0), 1.0) : vec4(iColor, 1.0);
 }
         """
     }
+
 }
