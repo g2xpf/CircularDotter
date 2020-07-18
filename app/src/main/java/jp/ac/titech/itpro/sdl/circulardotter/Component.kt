@@ -13,7 +13,7 @@ interface Component {
         windowHeight = height.toFloat()
     }
 
-    fun onScroll(pointerIndex: PointerIndex, x: Float, y: Float) {}
+    fun onScroll(pointerIndex: PointerIndex, dx: Float, dy: Float) {}
     fun onTouch(pointerIndex: PointerIndex, x: Float, y: Float) {}
     fun onRelease(pointerIndex: PointerIndex, x: Float, y: Float) {}
 }

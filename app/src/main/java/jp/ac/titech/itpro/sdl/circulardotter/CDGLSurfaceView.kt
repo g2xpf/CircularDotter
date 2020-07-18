@@ -28,15 +28,20 @@ class CDGLSurfaceView(context: Context, attributeSet: AttributeSet) :
         // renderMode = RENDERMODE_WHEN_DIRTY
     }
 
+    override fun performClick(): Boolean {
+        return super.performClick()
+    }
+
     override fun onTouchEvent(event: MotionEvent): Boolean {
+
         val actionIndex = event.actionIndex
 
-        val x = event.getX(actionIndex)
-        val y = event.getY(actionIndex)
         Log.d(TAG, "actionIndex: $actionIndex")
         when (event.action and MotionEvent.ACTION_MASK) {
             MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> {
+                performClick()
                 pointIdGap = 0
+                val (x, y) = event.getX(actionIndex) to event.getY(actionIndex)
                 renderer.onTouch(actionIndex, x, y)
                 prevX[actionIndex] = x
                 prevY[actionIndex] = y
@@ -46,11 +51,13 @@ class CDGLSurfaceView(context: Context, attributeSet: AttributeSet) :
                 if (actionIndex == 0) {
                     pointIdGap = 1
                 }
+                val (x, y) = event.getX(actionIndex) to event.getY(actionIndex)
                 renderer.onRelease(actionIndex, x, y)
             }
 
             MotionEvent.ACTION_UP -> {
                 Log.d(TAG, "action up: $actionIndex")
+                val (x, y) = event.getX(actionIndex) to event.getY(actionIndex)
                 renderer.onRelease(actionIndex + pointIdGap, x, y)
             }
 

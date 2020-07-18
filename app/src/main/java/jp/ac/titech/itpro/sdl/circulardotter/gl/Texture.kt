@@ -12,7 +12,7 @@ import kotlin.collections.ArrayDeque
 class Texture(
     private val width: Int,
     private val height: Int,
-    private val data: Buffer,
+    data: Buffer,
     private val colorUpdateQueue: LinkedList<CellInfo> = LinkedList(),
     private var prevCellInfo: CellInfo = CellInfo(-1 to -1, -1 to -1, Triple(0, 0, 0))
 ) {
@@ -106,6 +106,15 @@ class Texture(
 
         colorUpdateQueue.push(newCellInfo)
         prevCellInfo = newCellInfo
+    }
+
+    fun read(): ByteBuffer {
+        val buf = ByteBuffer.allocateDirect(width * height * 3).run {
+            order(ByteOrder.nativeOrder())
+        }
+        GLES31.glPixelStorei(GLES31.GL_UNPACK_ALIGNMENT, 1)
+        GLES31.glReadPixels(0, 0, width, height, GLES31.GL_RGB, GLES31.GL_UNSIGNED_BYTE, buf)
+        return buf
     }
 
     companion object {

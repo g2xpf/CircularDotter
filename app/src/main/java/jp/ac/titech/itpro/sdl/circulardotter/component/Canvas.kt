@@ -68,7 +68,7 @@ class Canvas(private var color: Triple<Float, Float, Float> = Triple(0.0f, 0.0f,
         }
         imageBuffer.rewind()
 
-        canvasTexture = Texture(imageWidth, imageHeight, imageBuffer);
+        canvasTexture = Texture(imageWidth, imageHeight, imageBuffer)
     }
 
     override fun onWindowResized(width: Int, height: Int) {
@@ -99,7 +99,7 @@ class Canvas(private var color: Triple<Float, Float, Float> = Triple(0.0f, 0.0f,
         }
 
         // uniform: canvasTexture
-        val textureIndex = canvasTexture.use();
+        val textureIndex = canvasTexture.use()
         shaderProgram.getUniformLocation("canvasTexture").also {
             GLES31.glUniform1i(it, textureIndex)
         }
