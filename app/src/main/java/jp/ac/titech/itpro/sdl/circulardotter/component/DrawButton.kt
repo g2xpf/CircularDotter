@@ -1,6 +1,7 @@
 package jp.ac.titech.itpro.sdl.circulardotter.component
 
 import android.opengl.GLES31
+import android.util.Log
 import jp.ac.titech.itpro.sdl.circulardotter.*
 import jp.ac.titech.itpro.sdl.circulardotter.gl.ShaderProgram
 import jp.ac.titech.itpro.sdl.circulardotter.gl.build

@@ -13,6 +13,11 @@ import java.nio.FloatBuffer
 import kotlin.math.abs
 import kotlin.math.floor
 
+enum class CanvasMode {
+    Read,
+    Write
+}
+
 class Canvas(globalInfo: GlobalInfo, rendererState: RendererState) :
     Component(globalInfo, rendererState) {
     private val TAG = Canvas::class.qualifiedName
@@ -114,7 +119,17 @@ class Canvas(globalInfo: GlobalInfo, rendererState: RendererState) :
         if (isOnCanvas) {
             this.pointerIndex = pointerIndex
         }
-        if (rendererState.isDrawing) requestDraw()
+        if (rendererState.isDrawing) {
+            when (rendererState.canvasMode) {
+                CanvasMode.Write -> {
+                    requestDraw()
+                }
+                CanvasMode.Read -> {
+                    val (x, y) = getCursorPos()
+                    rendererState.brushColor = canvasTexture.readColor(x, y)
+                }
+            }
+        }
     }
 
     override fun onScroll(pointerIndex: PointerIndex, x: Float, y: Float, dx: Float, dy: Float) {
@@ -128,7 +143,11 @@ class Canvas(globalInfo: GlobalInfo, rendererState: RendererState) :
 
         cursor = Pair(nx, ny)
 
-        if (rendererState.isDrawing) requestDraw()
+        when(rendererState.canvasMode) {
+            CanvasMode.Write -> if (rendererState.isDrawing) {
+                requestDraw()
+            }
+        }
     }
 
     override fun onRelease(pointerIndex: PointerIndex, x: Float, y: Float) {
@@ -144,7 +163,7 @@ class Canvas(globalInfo: GlobalInfo, rendererState: RendererState) :
         canvasTexture.initialize()
     }
 
-    private fun requestDraw() {
+    private fun getCursorPos(): Pair<Int, Int> {
         val (x, y) = cursor
         // pixel to imageCoord
         val nx = floor((x * imageWidth).toDouble()).toInt()
@@ -152,7 +171,12 @@ class Canvas(globalInfo: GlobalInfo, rendererState: RendererState) :
         assert((nx in 0 until imageWidth) && (ny in 0 until imageHeight)) {
             Log.e(TAG, "pixel range error")
         }
-        canvasTexture.write(nx, ny, 1, 1, rendererState.brushColor)
+        return nx to ny
+    }
+
+    private fun requestDraw() {
+        val (x, y) = getCursorPos()
+        canvasTexture.write(x, y, 1, 1, rendererState.brushColor)
     }
 
     companion object {

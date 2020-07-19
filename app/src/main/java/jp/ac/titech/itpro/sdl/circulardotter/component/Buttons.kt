@@ -1,7 +1,6 @@
 package jp.ac.titech.itpro.sdl.circulardotter.component
 
 import android.opengl.GLES31
-import android.util.Log
 import jp.ac.titech.itpro.sdl.circulardotter.GlobalInfo
 import jp.ac.titech.itpro.sdl.circulardotter.PointerIndex
 import jp.ac.titech.itpro.sdl.circulardotter.RendererState
@@ -11,7 +10,6 @@ import jp.ac.titech.itpro.sdl.circulardotter.gl.build
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
-import java.util.*
 import kotlin.math.PI
 import kotlin.math.sqrt
 
@@ -90,14 +88,14 @@ class Buttons(globalInfo: GlobalInfo, rendererState: RendererState) :
     }
 
     override fun onTouchScaled(isOnController: Boolean, r: Float, theta: Float) {
+        if(!isOnController) return
         val angle = (theta - globalInfo.inclination + TWO_PI) % TWO_PI
-        Log.d(TAG, "kind: $angle")
         val kind = (angle * SEPARATE_NUM.toFloat() / TWO_PI).toInt()
-        Log.d(TAG, "kind: $kind")
         when(kind) {
             0 -> rendererState.controllerMode = ControllerMode.ColorWheel
             1 -> rendererState.showGrid = !rendererState.showGrid
             2 -> rendererState.showCentralGrid = !rendererState.showCentralGrid
+            6 -> rendererState.canvasMode = if(rendererState.canvasMode == CanvasMode.Write) CanvasMode.Read else CanvasMode.Write
             7 -> rendererState.brushColor = Triple(1.0f, 1.0f, 1.0f)
         }
     }

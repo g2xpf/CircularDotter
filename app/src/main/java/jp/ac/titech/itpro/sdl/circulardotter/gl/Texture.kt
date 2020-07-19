@@ -124,6 +124,25 @@ class Texture(
         }
     }
 
+    fun readColor(x: Int, y: Int): Triple<Float, Float, Float> {
+        data.run() {
+            position(3 * (x + y * width))
+            val r = get()
+            val g = get()
+            val b = get()
+            rewind()
+            return Triple(
+                byteToNormalizedFloat(r),
+                byteToNormalizedFloat(g),
+                byteToNormalizedFloat(b)
+            )
+        }
+    }
+
+    private fun byteToNormalizedFloat(b: Byte): Float {
+        return (b.toInt() and 0xff).toFloat() / 255.0f
+    }
+
     fun read(): Triple<Int, Int, ByteBuffer> {
         return Triple(width, height, data)
     }
