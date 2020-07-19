@@ -143,14 +143,14 @@ class Texture(
 
         data.run {
             position(3 * (nx + ny * width))
-            for(i in 0 until nh) {
-                for(i in 0 until nw) {
+            outer@ for(i in 0 until nh) {
+                for(j in 0 until nw) {
                     put(r)
                     put(g)
                     put(b)
+                    if(i == nh - 1 && j == nw - 1) break@outer
                 }
                 val curPos = position()
-                Log.d(TAG, "curPos: ${curPos / 3}")
                 position(curPos + 3 * (width - nw))
             }
             rewind()
