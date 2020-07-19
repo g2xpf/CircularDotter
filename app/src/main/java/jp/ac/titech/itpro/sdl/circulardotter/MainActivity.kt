@@ -1,5 +1,8 @@
 package jp.ac.titech.itpro.sdl.circulardotter
 
+import android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+import android.content.ContentResolver
+import android.content.pm.PackageManager
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
@@ -12,6 +15,8 @@ import android.view.View
 import android.view.Window
 import android.view.WindowManager
 import android.widget.Toast
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
 import org.apache.commons.math3.complex.Quaternion
 import org.apache.commons.math3.geometry.euclidean.threed.Vector3D
 import kotlin.math.acos
@@ -19,6 +24,7 @@ import kotlin.math.cos
 import kotlin.math.sin
 
 class MainActivity : AppCompatActivity(), SensorEventListener {
+    private val REQUEST_EXTERNAL_STORAGE = 120
     private val TAG = MainActivity::class.qualifiedName
     private lateinit var glView: CDGLSurfaceView
 
@@ -35,6 +41,8 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         super.onCreate(savedInstanceState)
         Log.d(TAG, "onCreate")
 
+        getPermission()
+
         //Remove title bar
         requestWindowFeature(Window.FEATURE_NO_TITLE)
 
@@ -47,6 +55,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         setContentView(R.layout.activity_main)
 
         glView = findViewById(R.id.gl_view)
+        glView.setActivityInfo(this, contentResolver)
 
         manager = getSystemService(SENSOR_SERVICE) as SensorManager
         if (manager == null) {
@@ -57,6 +66,34 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         gyroscope = manager.getDefaultSensor(Sensor.TYPE_GYROSCOPE)
         if (gyroscope == null) {
             Toast.makeText(this, R.string.toast_no_gyroscope, Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun getPermission() {
+        if (ContextCompat.checkSelfPermission(this,
+                WRITE_EXTERNAL_STORAGE)
+            != PackageManager.PERMISSION_GRANTED) {
+
+            // Permission is not granted
+            // Should we show an explanation?
+            if (ActivityCompat.shouldShowRequestPermissionRationale(this,
+                    WRITE_EXTERNAL_STORAGE)) {
+                Log.d(TAG, "b")
+                // Show an explanation to the user *asynchronously* -- don't block
+                // this thread waiting for the user's response! After the user
+                // sees the explanation, try again to request the permission.
+            } else {
+                Toast.makeText(this, "wow!", Toast.LENGTH_SHORT).show();
+                // No explanation needed; request the permission
+                ActivityCompat.requestPermissions(this,
+                    arrayOf(WRITE_EXTERNAL_STORAGE), REQUEST_EXTERNAL_STORAGE)
+
+                // MY_PERMISSIONS_REQUEST_READ_CONTACTS is an
+                // app-defined int constant. The callback method gets the
+                // result of the request.
+            }
+        } else {
+            Log.d(TAG, "permission is attached")
         }
     }
 
@@ -164,6 +201,35 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {
         Log.d(TAG, "onAccuracyChanged: accuracy=$accuracy")
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int,
+                                            permissions: Array<String>, grantResults: IntArray) {
+        Log.d(TAG, "request code: $requestCode")
+        when (requestCode) {
+            REQUEST_EXTERNAL_STORAGE -> {
+                Log.d(TAG, "yeah")
+                // If request is cancelled, the result arrays are empty.
+                if ((grantResults.isNotEmpty() &&
+                            grantResults[0] == PackageManager.PERMISSION_GRANTED)) {
+                    // Permission is granted. Continue the action or workflow
+                    // in your app.
+                } else {
+                    // Explain to the user that the feature is unavailable because
+                    // the features requires a permission that the user has denied.
+                    // At the same time, respect the user's decision. Don't link to
+                    // system settings in an effort to convince the user to change
+                    // their decision.
+                }
+                return
+            }
+
+            // Add other 'when' lines to check for other
+            // permissions this app might request.
+            else -> {
+                // Ignore all other requests.
+            }
+        }
     }
 }
 

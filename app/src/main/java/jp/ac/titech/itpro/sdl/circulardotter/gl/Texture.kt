@@ -177,7 +177,23 @@ class Texture(
     }
 
     fun read(): Triple<Int, Int, ByteBuffer> {
-        return Triple(width, height, data)
+        val buf = ByteBuffer.allocateDirect(4 * width * height).run {
+            order(ByteOrder.nativeOrder())
+        }
+        data.run {
+            for(i in height - 1 downTo 0) {
+                position(3 * i * width)
+                for(j in 0 until width) {
+                    buf.put(get()) // 255.toByte())
+                    buf.put(get()) // get())
+                    buf.put(get()) // get())
+                    buf.put(255.toByte()) // get())
+                }
+            }
+            rewind()
+        }
+        buf.rewind()
+        return Triple(width, height, buf)
     }
 
     companion object {

@@ -1,5 +1,7 @@
 package jp.ac.titech.itpro.sdl.circulardotter
 
+import android.content.ContentResolver
+import android.content.Context
 import android.graphics.Point
 import android.opengl.GLES10.GL_LINE_SMOOTH
 import android.opengl.GLES31
@@ -11,19 +13,27 @@ import javax.microedition.khronos.egl.EGLConfig
 import javax.microedition.khronos.opengles.GL10
 import kotlin.math.sqrt
 
-data class RendererState (
-    var canvasMode: CanvasMode,
-    var brushColor: Triple<Float, Float, Float>,
-    var brushSize: Int,
-    var isDrawing: Boolean,
-    var controllerMode: ControllerMode,
-    var showGrid: Boolean,
-    var showCentralGrid: Boolean
+sealed class SaveImageState {
+    object Steady: SaveImageState()
+    data class SaveRequested(val destSize: Int): SaveImageState()
+}
+
+data class RendererState(
+    var canvasMode: CanvasMode = CanvasMode.Write,
+    var brushColor: Triple<Float, Float, Float> = Triple(1.0f, 0.0f, 0.0f),
+    var brushSize: Int = 1,
+    var isDrawing: Boolean = false,
+    var controllerMode: ControllerMode = ControllerMode.ColorWheel,
+    var showGrid: Boolean = true,
+    var showCentralGrid: Boolean = true,
+    var saveImageState: SaveImageState = SaveImageState.Steady,
+    var contentResolver: ContentResolver? = null,
+    var activity: MainActivity? = null
 )
 
 class Renderer : GLSurfaceView.Renderer {
     private val TAG = Renderer::class.qualifiedName
-    private var rendererState = RendererState(CanvasMode.Write, Triple(0.0f, 0.0f, 0.0f), 1, false, ControllerMode.ColorWheel, true, true)
+    private var rendererState = RendererState()
     private var globalInfo = GlobalInfo(0.0, 0.0f)
     private val components = mutableListOf<Component>()
 
@@ -32,6 +42,11 @@ class Renderer : GLSurfaceView.Renderer {
         components.add(Controller(globalInfo, rendererState))
         components.add(DrawButton(globalInfo, rendererState))
         components.add(Canvas(globalInfo, rendererState))
+    }
+
+    fun setActivityInfo(activity: MainActivity?, contentResolver: ContentResolver) {
+        this.rendererState.activity = activity
+        this.rendererState.contentResolver = contentResolver
     }
 
     override fun onDrawFrame(unused: GL10) {
@@ -58,7 +73,6 @@ class Renderer : GLSurfaceView.Renderer {
         for (c in components) {
             c.onSurfaceCreated()
         }
-
     }
 
     fun onTouch(pointerIndex: PointerIndex, x: Float, y: Float) {

@@ -122,11 +122,17 @@ uniform vec2 iResolution;
 out vec4 fragColor;
 
 const float sqrt2Halved = 0.70710678118;
+const float BORDER_WIDTH = .04;
 
 void main() {
     vec2 coordCentered = vec2(coord.x * iResolution.x / iResolution.y, coord.y);
-    if(abs(gl_FragCoord.x * 2.0 - iResolution.x) < iResolution.y || length(coordCentered) > sqrt2Halved) discard;
-    fragColor = (iPushed > 0 && iCanvasMode > 0) ? vec4(vec3(0.0), 1.0) : vec4(iColor, 1.0);
+    float distFromYAxis = abs(gl_FragCoord.x * 2.0 - iResolution.x);
+    if(distFromYAxis < iResolution.y || length(coordCentered) > sqrt2Halved) discard;
+    if(distFromYAxis < iResolution.y * (1. + BORDER_WIDTH)) {
+        fragColor = vec4(vec3(0.0), 1.0);
+    } else {
+        fragColor = (iPushed > 0 && iCanvasMode > 0) ? vec4(vec3(0.0), 1.0) : vec4(iColor, 1.0);
+    }
 }
         """
     }

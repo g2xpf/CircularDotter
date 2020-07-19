@@ -4,6 +4,7 @@ import android.opengl.GLES31
 import jp.ac.titech.itpro.sdl.circulardotter.GlobalInfo
 import jp.ac.titech.itpro.sdl.circulardotter.PointerIndex
 import jp.ac.titech.itpro.sdl.circulardotter.RendererState
+import jp.ac.titech.itpro.sdl.circulardotter.SaveImageState
 import jp.ac.titech.itpro.sdl.circulardotter.component.controller.ColorWheel
 import jp.ac.titech.itpro.sdl.circulardotter.gl.ShaderProgram
 import jp.ac.titech.itpro.sdl.circulardotter.gl.build
@@ -95,6 +96,7 @@ class Buttons(globalInfo: GlobalInfo, rendererState: RendererState) :
             0 -> rendererState.controllerMode = ControllerMode.ColorWheel
             1 -> rendererState.showGrid = !rendererState.showGrid
             2 -> rendererState.showCentralGrid = !rendererState.showCentralGrid
+            4 -> rendererState.saveImageState = SaveImageState.SaveRequested(256)
             5 -> rendererState.brushSize = if(rendererState.brushSize >= 11) 1 else rendererState.brushSize + 2
             6 -> rendererState.canvasMode = if(rendererState.canvasMode == CanvasMode.Write) CanvasMode.Read else CanvasMode.Write
             7 -> rendererState.brushColor = Triple(1.0f, 1.0f, 1.0f)
@@ -175,9 +177,9 @@ void main() {
     float modAngle = mod(theta, borderAngle);
     int buttonKind = int(floor(theta / borderAngle));
     for(int i = 0; i < iSeparateNum; ++i) {
-        float r = ((i >> 2) & 1) == 1 ? 1.0 : 0.0;
-        float g = ((i >> 1) & 1) == 1 ? 1.0 : 0.0;
-        float b = ((i >> 0) & 1) == 1 ? 1.0 : 0.0;
+        float r = ((i >> 2) & 1) == 1 ? 0.7 : 0.0;
+        float g = ((i >> 1) & 1) == 1 ? 0.7 : 0.0;
+        float b = ((i >> 0) & 1) == 1 ? 0.7 : 0.0;
         if(i == buttonKind) {
             fragColor = vec4(r, g, b, 1.0);
             break;

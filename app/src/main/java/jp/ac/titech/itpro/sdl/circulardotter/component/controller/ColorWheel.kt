@@ -198,7 +198,7 @@ void main() {
         
         float ratio = smoothstep(0.0, 1.0, mod(theta, PI * 0.125) / (PI * 0.125));
         float woundRatio = abs(ratio - 0.5) * 2.0;
-        vec3 specularColor = mix(vec3(0.1), vec3(.9), woundRatio);
+        vec3 specularColor = mix(vec3(0.3), vec3(.9), woundRatio);
         vec3 mixedColor = mix(specularColor, color, mixRatio);
         
         fragColor = vec4(color * mixRatio, 1.0);

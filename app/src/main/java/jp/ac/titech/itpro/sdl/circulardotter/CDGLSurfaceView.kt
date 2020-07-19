@@ -1,5 +1,6 @@
 package jp.ac.titech.itpro.sdl.circulardotter
 
+import android.content.ContentResolver
 import android.content.Context
 import android.opengl.GLSurfaceView
 import android.os.Parcelable
@@ -19,6 +20,10 @@ class CDGLSurfaceView(context: Context, attributeSet: AttributeSet) :
     private var prevY = floatArrayOf(0.0f, 0.0f, 0.0f, 0.0f)
     private var renderer = Renderer()
 
+    fun setActivityInfo(activity: MainActivity, contentResolver: ContentResolver) {
+        renderer.setActivityInfo(activity, contentResolver)
+    }
+
     init {
         setEGLContextClientVersion(3)
 
@@ -31,6 +36,10 @@ class CDGLSurfaceView(context: Context, attributeSet: AttributeSet) :
 
     override fun performClick(): Boolean {
         return super.performClick()
+    }
+
+    override fun onResume() {
+        super.onResume()
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
