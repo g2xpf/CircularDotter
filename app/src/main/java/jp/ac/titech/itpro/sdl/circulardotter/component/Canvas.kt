@@ -99,7 +99,7 @@ class Canvas(globalInfo: GlobalInfo, rendererState: RendererState) :
         }
 
         // uniform: cursor
-        shaderProgram.getUniformLocation("cursorPos").also {
+        shaderProgram.getUniformLocation("iCursorPos").also {
             val (x, y) = cursor
             GLES31.glUniform2i(it, (x * imageWidth).toInt(), (y * imageHeight).toInt())
         }
@@ -107,6 +107,11 @@ class Canvas(globalInfo: GlobalInfo, rendererState: RendererState) :
         // uniform: iTime
         shaderProgram.getUniformLocation("iTime").also {
             GLES31.glUniform1f(it, globalInfo.time)
+        }
+
+        // uniform: iCursorSize
+        shaderProgram.getUniformLocation("iCursorSize").also {
+            GLES31.glUniform1i(it, rendererState.brushSize)
         }
 
         GLES31.glDrawArrays(GLES31.GL_TRIANGLE_FAN, 0, verticesCnt)
@@ -143,9 +148,15 @@ class Canvas(globalInfo: GlobalInfo, rendererState: RendererState) :
 
         cursor = Pair(nx, ny)
 
-        when(rendererState.canvasMode) {
-            CanvasMode.Write -> if (rendererState.isDrawing) {
-                requestDraw()
+        if(rendererState.isDrawing) {
+            when (rendererState.canvasMode) {
+                CanvasMode.Write -> {
+                    requestDraw()
+                }
+                CanvasMode.Read -> {
+                    val (x, y) = getCursorPos()
+                    rendererState.brushColor = canvasTexture.readColor(x, y)
+                }
             }
         }
     }
@@ -209,9 +220,10 @@ uniform sampler2D canvasTexture;
 uniform float iTime;
 uniform vec2 iResolution;
 uniform vec2 imageDimension;
+uniform int iCursorSize;
 // x: showGrid, y: showCentralGrid
 uniform ivec2 showGrid;
-uniform ivec2 cursorPos;
+uniform ivec2 iCursorPos;
 
 in vec2 uv;
 
@@ -220,9 +232,11 @@ out vec4 fragColor;
 const float GRID_WIDTH = 0.001;
 const float CENTRAL_GRID_WIDTH = GRID_WIDTH * 2.;
 
-bool fillGrid(in vec2 p, in vec2 cellSize, in float gridWidth, in vec4 color) {
+void fillGrid(in vec2 p, in vec2 cellSize, in float gridWidth, in vec4 color) {
     vec2 roundWidth = cellSize * .5 - abs(mod(p, cellSize) - (cellSize * .5)); 
-    return (roundWidth.x < gridWidth || roundWidth.y < gridWidth) && (fragColor = color, true);
+    if(roundWidth.x < gridWidth || roundWidth.y < gridWidth) {
+        fragColor = color;
+    }
 }
 
 void main() {
@@ -231,11 +245,12 @@ void main() {
     vec2 uvCentered = vec2(clamp((uv.x - .5) * iResolution.x / iResolution.y + .5, 0.0, 1.0), uv.y);
     vec2 cellSize = 1.0 / imageDimension;
     
-    // cursor
-    float flashColor = abs(fract(iTime) - .5) * 2.;
-    if(cursorPos == ivec2(floor(uvCentered * imageDimension))
-        && fillGrid(uvCentered, cellSize, GRID_WIDTH * 2., vec4(1., flashColor, flashColor, 1.0))) {
-        return;
+    // canvas
+    fragColor = vec4(texture(canvasTexture, uvCentered).xyz, 1.0);
+    
+    // normal grid
+    if(showGrid.x > 0) {
+        fillGrid(uvCentered, cellSize, GRID_WIDTH, vec4(vec3(0.7), 1.0));
     }
     
     // central grid
@@ -243,16 +258,18 @@ void main() {
         vec2 width = abs(uvCentered - vec2(.5));
         if(width.x < CENTRAL_GRID_WIDTH || width.y < CENTRAL_GRID_WIDTH) {
             fragColor = vec4(vec3(0.0), 1.0);
-            return;
         }
     }
     
-    // normal grid
-    if(showGrid.x > 0 && fillGrid(uvCentered, cellSize, GRID_WIDTH, vec4(vec3(0.7), 1.0))) {
-        return;
+    // cursor
+    float flashColor = abs(fract(iTime) - .5) * 2.;
+    ivec2 diffVec = abs(iCursorPos - ivec2(uvCentered * imageDimension));
+    if(diffVec.x <= iCursorSize / 2 && diffVec.y <= iCursorSize / 2) {
+        ivec2 leftDown = max(iCursorPos - iCursorSize / 2, ivec2(0, 0));
+        ivec2 rightUp = min(iCursorPos + iCursorSize / 2, ivec2(imageDimension) - ivec2(1));
+        vec2 wh = vec2(rightUp - leftDown + ivec2(1)) * cellSize;
+        fillGrid(uvCentered - vec2(leftDown) / imageDimension, wh, GRID_WIDTH * 2., vec4(1.0, flashColor, flashColor, 1.0));
     }
-    
-    fragColor = vec4(texture(canvasTexture, uvCentered).xyz, 1.0);
 }
         """
     }

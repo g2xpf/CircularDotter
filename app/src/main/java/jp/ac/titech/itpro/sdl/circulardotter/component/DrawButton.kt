@@ -11,7 +11,8 @@ import java.nio.ByteOrder
 import java.nio.FloatBuffer
 import kotlin.math.abs
 
-class DrawButton(globalInfo: GlobalInfo, rendererState: RendererState) : Component(globalInfo, rendererState) {
+class DrawButton(globalInfo: GlobalInfo, rendererState: RendererState) :
+    Component(globalInfo, rendererState) {
     private val TAG = DrawButton::class.qualifiedName
     private var pointerIndex: Int? = null
 
@@ -51,6 +52,10 @@ class DrawButton(globalInfo: GlobalInfo, rendererState: RendererState) : Compone
         shaderProgram.getUniformLocation("iColor").also {
             val (r, g, b) = rendererState.brushColor
             GLES31.glUniform3f(it, r, g, b)
+        }
+
+        shaderProgram.getUniformLocation("iCanvasMode").also {
+            GLES31.glUniform1i(it, if (rendererState.canvasMode == CanvasMode.Write) 1 else 0)
         }
 
         GLES31.glDrawArrays(GLES31.GL_TRIANGLE_FAN, 0, verticesCnt)
@@ -112,6 +117,7 @@ precision mediump float;
 in vec2 coord;
 uniform vec3 iColor;
 uniform int iPushed;
+uniform int iCanvasMode;
 uniform vec2 iResolution;
 out vec4 fragColor;
 
@@ -120,7 +126,7 @@ const float sqrt2Halved = 0.70710678118;
 void main() {
     vec2 coordCentered = vec2(coord.x * iResolution.x / iResolution.y, coord.y);
     if(abs(gl_FragCoord.x * 2.0 - iResolution.x) < iResolution.y || length(coordCentered) > sqrt2Halved) discard;
-    fragColor = (iPushed > 0) ? vec4(vec3(0.0), 1.0) : vec4(iColor, 1.0);
+    fragColor = (iPushed > 0 && iCanvasMode > 0) ? vec4(vec3(0.0), 1.0) : vec4(iColor, 1.0);
 }
         """
     }

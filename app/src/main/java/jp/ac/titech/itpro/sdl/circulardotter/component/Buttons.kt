@@ -95,6 +95,7 @@ class Buttons(globalInfo: GlobalInfo, rendererState: RendererState) :
             0 -> rendererState.controllerMode = ControllerMode.ColorWheel
             1 -> rendererState.showGrid = !rendererState.showGrid
             2 -> rendererState.showCentralGrid = !rendererState.showCentralGrid
+            5 -> rendererState.brushSize = if(rendererState.brushSize >= 11) 1 else rendererState.brushSize + 2
             6 -> rendererState.canvasMode = if(rendererState.canvasMode == CanvasMode.Write) CanvasMode.Read else CanvasMode.Write
             7 -> rendererState.brushColor = Triple(1.0f, 1.0f, 1.0f)
         }
