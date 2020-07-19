@@ -11,29 +11,18 @@ import java.nio.ByteOrder
 import java.nio.FloatBuffer
 import kotlin.math.abs
 
-enum class ButtonState {
-    Pushed,
-    Released
-}
-
 class DrawButton(globalInfo: GlobalInfo, private val rendererState: RendererState) : Component(globalInfo) {
     private val TAG = DrawButton::class.qualifiedName
-    private var state: ButtonState = ButtonState.Released
     private var pointerIndex: Int? = null
 
-    private val vertexBuffer: FloatBuffer
-    private val shaderProgram: ShaderProgram
-
-    init {
-        vertexBuffer = ByteBuffer.allocateDirect(vertices.size * 4).run() {
-            order(ByteOrder.nativeOrder())
-            asFloatBuffer().apply {
-                put(vertices)
-                position(0)
-            }
+    private val vertexBuffer: FloatBuffer = ByteBuffer.allocateDirect(vertices.size * 4).run() {
+        order(ByteOrder.nativeOrder())
+        asFloatBuffer().apply {
+            put(vertices)
+            position(0)
         }
-        shaderProgram = ShaderProgram.setFragment(fragmentShader).setVertex(vertexShader).build()
     }
+    private lateinit var shaderProgram: ShaderProgram
 
     override fun draw() {
         super.draw()
@@ -56,7 +45,7 @@ class DrawButton(globalInfo: GlobalInfo, private val rendererState: RendererStat
         }
 
         shaderProgram.getUniformLocation("iPushed").also {
-            GLES31.glUniform1i(it, if (state == ButtonState.Pushed) 1 else 0)
+            GLES31.glUniform1i(it, if (rendererState.isDrawing) 1 else 0)
         }
 
         shaderProgram.getUniformLocation("iColor").also {
@@ -72,7 +61,7 @@ class DrawButton(globalInfo: GlobalInfo, private val rendererState: RendererStat
     override fun onTouch(pointerIndex: PointerIndex, x: Float, y: Float) {
         if (isOnButton(x, y)) {
             Log.d(TAG, "touched: ${this.pointerIndex} -> $pointerIndex")
-            state = ButtonState.Pushed
+            rendererState.isDrawing = true
             this.pointerIndex = pointerIndex
         }
     }
@@ -80,9 +69,13 @@ class DrawButton(globalInfo: GlobalInfo, private val rendererState: RendererStat
     override fun onRelease(pointerIndex: PointerIndex, x: Float, y: Float) {
         Log.d(TAG, "released: ${this.pointerIndex} -> $pointerIndex")
         if (this.pointerIndex == pointerIndex) {
-            state = ButtonState.Released
+            rendererState.isDrawing = false
             this.pointerIndex = null
         }
+    }
+
+    override fun onSurfaceCreated() {
+        shaderProgram = ShaderProgram.setFragment(fragmentShader).setVertex(vertexShader).build()
     }
 
     private fun isOnButton(x: Float, y: Float): Boolean {
@@ -91,14 +84,6 @@ class DrawButton(globalInfo: GlobalInfo, private val rendererState: RendererStat
         val notOnCanvas = abs(cx) > windowHeight * 0.5
         val isOnCircle = Vector2D(cx, cy).normSq < windowHeight * windowHeight * 0.5
         return notOnCanvas && isOnCircle
-    }
-
-    fun send(receiver: Canvas) {
-        receiver.receive(Canvas.Message.ShouldDraw(isPushed()))
-    }
-
-    private fun isPushed(): Boolean {
-        return state == ButtonState.Pushed
     }
 
     companion object {

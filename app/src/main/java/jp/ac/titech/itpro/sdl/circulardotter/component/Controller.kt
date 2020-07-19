@@ -11,11 +11,9 @@ enum class ControllerMode {
 }
 
 class Controller(globalInfo: GlobalInfo, private var rendererState: RendererState) : Component(globalInfo) {
-    private val controllerWidth = 150.0f
-
     private var mode = ControllerMode.ColorWheel
 
-    private val colorWheel = ColorWheel(controllerWidth, globalInfo, rendererState)
+    private val colorWheel = ColorWheel(CONTROLLER_WIDTH, globalInfo, rendererState)
 
     override fun draw() {
         super.draw()
@@ -53,5 +51,13 @@ class Controller(globalInfo: GlobalInfo, private var rendererState: RendererStat
                 colorWheel.onRelease(pointerIndex, x, y)
             }
         }
+    }
+
+    override fun onSurfaceCreated() {
+        colorWheel.onSurfaceCreated()
+    }
+
+    companion object {
+        const val CONTROLLER_WIDTH = 150.0f
     }
 }

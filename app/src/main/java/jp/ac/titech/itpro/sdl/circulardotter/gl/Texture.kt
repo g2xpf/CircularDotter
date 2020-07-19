@@ -11,16 +11,19 @@ import java.util.*
 class Texture(
     private val width: Int,
     private val height: Int,
-    data: Buffer,
+    private var data: ByteBuffer,
     private val colorUpdateQueue: LinkedList<CellInfo> = LinkedList(),
     private var prevCellInfo: CellInfo = CellInfo(-1 to -1, -1 to -1, Triple(0, 0, 0))
 ) {
     private val TAG = Texture::class.qualifiedName
-    private val texture: Int
+    private var texture: Int = 0
     private val textureCount: Int
 
     init {
         textureCount = totalTextureCount++
+    }
+
+    fun initialize() {
         val buf = IntBuffer.allocate(1)
 
         GLES31.glActiveTexture(GLES31.GL_TEXTURE0 + textureCount)
@@ -91,28 +94,38 @@ class Texture(
     // write CellInfo to the texture only when it's not equivalent to the previous one
     fun write(x: Int, y: Int, w: Int, h: Int, data: Triple<Float, Float, Float>) {
         val (r, g, b) = data
+        val colorBytes = Triple(
+            (r * 255).toInt().toByte(),
+            (g * 255).toInt().toByte(),
+            (b * 255).toInt().toByte()
+        )
+
         val newCellInfo = CellInfo(
             Pair(x, y),
             Pair(w, h),
-            Triple(
-                (r * 255).toInt().toByte(),
-                (g * 255).toInt().toByte(),
-                (b * 255).toInt().toByte()
-            )
+            colorBytes
         )
         if (prevCellInfo == newCellInfo) return
 
+        writeBytes(x, y, w, h, colorBytes)
         colorUpdateQueue.push(newCellInfo)
+
         prevCellInfo = newCellInfo
     }
 
-    fun read(): Triple<Int, Int, ByteBuffer> {
-        val buf = ByteBuffer.allocateDirect(width * height * 3).run {
-            order(ByteOrder.nativeOrder())
+    private fun writeBytes(x: Int, y: Int, w: Int, h: Int, color: Triple<Byte, Byte, Byte>) {
+        val (r, g, b) = color
+        data.run {
+            position(3 * (x + y * width))
+            put(r)
+            put(g)
+            put(b)
+            rewind()
         }
-        GLES31.glPixelStorei(GLES31.GL_UNPACK_ALIGNMENT, 1)
-        GLES31.glReadPixels(0, 0, width, height, GLES31.GL_RGB, GLES31.GL_UNSIGNED_BYTE, buf)
-        return Triple(width, height, buf)
+    }
+
+    fun read(): Triple<Int, Int, ByteBuffer> {
+        return Triple(width, height, data)
     }
 
     companion object {

@@ -2,6 +2,7 @@ package jp.ac.titech.itpro.sdl.circulardotter
 
 import android.content.Context
 import android.opengl.GLSurfaceView
+import android.os.Parcelable
 import android.util.AttributeSet
 import android.util.Log
 import android.view.MotionEvent

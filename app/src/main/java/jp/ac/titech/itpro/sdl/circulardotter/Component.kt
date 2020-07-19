@@ -1,6 +1,6 @@
 package jp.ac.titech.itpro.sdl.circulardotter
 
-data class GlobalInfo (var inclination: Double, var time: Float)
+data class GlobalInfo(var inclination: Double, var time: Float)
 typealias PointerIndex = Int
 
 abstract class Component(var globalInfo: GlobalInfo) {
@@ -10,6 +10,7 @@ abstract class Component(var globalInfo: GlobalInfo) {
     open fun draw() {
         update()
     }
+
     open fun update() {}
     open fun onWindowResized(width: Int, height: Int) {
         windowWidth = width.toFloat()
@@ -19,4 +20,5 @@ abstract class Component(var globalInfo: GlobalInfo) {
     open fun onScroll(pointerIndex: PointerIndex, x: Float, y: Float, dx: Float, dy: Float) {}
     open fun onTouch(pointerIndex: PointerIndex, x: Float, y: Float) {}
     open fun onRelease(pointerIndex: PointerIndex, x: Float, y: Float) {}
+    open fun onSurfaceCreated() {}
 }

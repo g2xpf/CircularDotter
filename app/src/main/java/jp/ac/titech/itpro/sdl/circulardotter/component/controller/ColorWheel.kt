@@ -11,27 +11,22 @@ import java.nio.ByteOrder
 import java.nio.FloatBuffer
 import kotlin.math.PI
 
-class ColorWheel(controllerWidth: Float,
-                 globalInfo: GlobalInfo,
-                 var rendererState: RendererState
+class ColorWheel(
+    controllerWidth: Float,
+    globalInfo: GlobalInfo,
+    var rendererState: RendererState
 ) : ControllerComponent(controllerWidth, globalInfo) {
     private val TAG = ColorWheel::class.qualifiedName
 
-    private val vertexBuffer: FloatBuffer
-    private val shaderProgram: ShaderProgram
-    private var cursor: Pair<Float, Float>? = null
-
-    init {
-        vertexBuffer = ByteBuffer.allocateDirect(vertices.size * 4).run() {
-            order(ByteOrder.nativeOrder())
-            asFloatBuffer().apply {
-                put(Companion.vertices)
-                rewind()
-            }
+    private val vertexBuffer: FloatBuffer = ByteBuffer.allocateDirect(vertices.size * 4).run() {
+        order(ByteOrder.nativeOrder())
+        asFloatBuffer().apply {
+            put(Companion.vertices)
+            rewind()
         }
-
-        shaderProgram = ShaderProgram.setFragment(fragmentShader).setVertex(vertexShader).build()
     }
+    private lateinit var shaderProgram: ShaderProgram
+    private var cursor: Pair<Float, Float>? = null
 
     override fun draw() {
         super.draw()
@@ -59,7 +54,7 @@ class ColorWheel(controllerWidth: Float,
             GLES31.glUniform1f(it, -globalInfo.inclination.toFloat())
         }
 
-        // uniform: iInclination
+        // uniform: iWheelWidth
         shaderProgram.getUniformLocation("iWheelWidth").also {
             GLES31.glUniform1f(it, controllerWidth)
         }
@@ -76,7 +71,7 @@ class ColorWheel(controllerWidth: Float,
     }
 
     override fun onTouchScaled(isOnController: Boolean, r: Float, theta: Float) {
-        if(isOnController) {
+        if (isOnController) {
             cursor = r to theta
             rendererState.brushColor = thetaToColor(theta)
             Log.d(TAG, "onTouchScaled: $theta")
@@ -84,7 +79,7 @@ class ColorWheel(controllerWidth: Float,
     }
 
     override fun onScrollScaled(isOnController: Boolean, r: Float, theta: Float) {
-        if(cursor == null) return
+        if (cursor == null) return
         cursor = r to theta
         rendererState.brushColor = thetaToColor(theta)
         Log.d(TAG, "onScrollScaled: $theta")
@@ -96,13 +91,17 @@ class ColorWheel(controllerWidth: Float,
 
     override fun update() {
         val theta = cursor?.second
-        if(theta != null) {
+        if (theta != null) {
             rendererState.brushColor = thetaToColor(theta)
             Log.d(TAG, "update: $theta")
         }
     }
 
-    private fun thetaToColor(theta: Float): Triple<Float, Float, Float>{
+    override fun onSurfaceCreated() {
+        shaderProgram = ShaderProgram.setFragment(fragmentShader).setVertex(vertexShader).build()
+    }
+
+    private fun thetaToColor(theta: Float): Triple<Float, Float, Float> {
         val a = 0.95492965855f
         val b = 1.0471975512f
         val theta = ((theta - globalInfo.inclination + TWO_PI) % TWO_PI).toFloat()

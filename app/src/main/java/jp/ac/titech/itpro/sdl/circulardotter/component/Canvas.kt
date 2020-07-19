@@ -14,17 +14,18 @@ import kotlin.math.abs
 import kotlin.math.floor
 
 class Canvas(globalInfo: GlobalInfo, private val rendererState: RendererState) :
-    Component(globalInfo), Receiver<Canvas.Message> {
-    sealed class Message {
-        data class ShouldDraw(val shouldDraw: Boolean): Message()
-        data class Color(val color: Triple<Float, Float, Float>): Message()
-    }
-
+    Component(globalInfo) {
     private val TAG = Canvas::class.qualifiedName
 
     // private val pixels: Buffer
-    private val vertexBuffer: FloatBuffer
-    private val shaderProgram: ShaderProgram
+    private val vertexBuffer: FloatBuffer = ByteBuffer.allocateDirect(vertices.size * 4).run() {
+        order(ByteOrder.nativeOrder())
+        asFloatBuffer().apply {
+            put(vertices)
+            position(0)
+        }
+    }
+    private lateinit var shaderProgram: ShaderProgram
 
     private var imageWidth = 32
     private var imageHeight = 32
@@ -37,26 +38,13 @@ class Canvas(globalInfo: GlobalInfo, private val rendererState: RendererState) :
 
     private var pointerIndex: Int? = null
 
-    private var shouldDraw = false
-
     // uv coord
     private var cursor = Pair<Float, Float>(0.0f, 0.0f)
 
     init {
-        vertexBuffer = ByteBuffer.allocateDirect(vertices.size * 4).run() {
-            order(ByteOrder.nativeOrder())
-            asFloatBuffer().apply {
-                put(vertices)
-                position(0)
-            }
-        }
-
-        shaderProgram = ShaderProgram.setFragment(fragmentShader).setVertex(vertexShader).build()
-
         imageBuffer = ByteBuffer.allocateDirect(imageWidth * imageHeight * 3).run() {
             order(ByteOrder.nativeOrder())
         }
-        // TODO: naive implementation
         repeat(imageWidth * imageHeight) { i ->
             val r = (i % imageWidth) * (256 / imageWidth)
             val g = (i / imageHeight) * (256 / imageHeight)
@@ -129,12 +117,11 @@ class Canvas(globalInfo: GlobalInfo, private val rendererState: RendererState) :
         if (isOnCanvas) {
             this.pointerIndex = pointerIndex
         }
-
-        Log.d(TAG, "shouldDraw: $shouldDraw")
-        if (shouldDraw) requestDraw()
+        if (rendererState.isDrawing) requestDraw()
     }
 
     override fun onScroll(pointerIndex: PointerIndex, x: Float, y: Float, dx: Float, dy: Float) {
+        Log.d(TAG, "${this.pointerIndex}, $pointerIndex")
         if (this.pointerIndex != pointerIndex) return
         val (x, y) = cursor
 
@@ -144,15 +131,20 @@ class Canvas(globalInfo: GlobalInfo, private val rendererState: RendererState) :
 
         cursor = Pair(nx, ny)
 
-        if (shouldDraw) requestDraw()
+        if (rendererState.isDrawing) requestDraw()
     }
 
-    override fun receive(message: Message) {
-        when(message) {
-            is Message.ShouldDraw -> {
-                shouldDraw = message.shouldDraw
-            }
+    override fun onRelease(pointerIndex: PointerIndex, x: Float, y: Float) {
+        super.onRelease(pointerIndex, x, y)
+        if (this.pointerIndex == pointerIndex) {
+            this.pointerIndex = null
         }
+    }
+
+    override fun onSurfaceCreated() {
+        shaderProgram = ShaderProgram.setFragment(fragmentShader).setVertex(vertexShader).build()
+
+        canvasTexture.initialize()
     }
 
     fun setGrid(v: Boolean) {
