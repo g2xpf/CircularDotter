@@ -11,6 +11,7 @@ import jp.ac.titech.itpro.sdl.circulardotter.gl.build
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
+import java.util.*
 import kotlin.math.PI
 import kotlin.math.sqrt
 
@@ -89,8 +90,15 @@ class Buttons(globalInfo: GlobalInfo, rendererState: RendererState) :
     }
 
     override fun onTouchScaled(isOnController: Boolean, r: Float, theta: Float) {
-        rendererState.controllerMode = thetaToControllerMode(theta)
-        Log.d(TAG, "controller mode changed: ${rendererState.controllerMode}")
+        val angle = (theta - globalInfo.inclination + TWO_PI) % TWO_PI
+        Log.d(TAG, "kind: $angle")
+        val kind = (angle * SEPARATE_NUM.toFloat() / TWO_PI).toInt()
+        Log.d(TAG, "kind: $kind")
+        when(kind) {
+            0 -> rendererState.controllerMode = ControllerMode.ColorWheel
+            1 -> rendererState.showGrid = !rendererState.showGrid
+            2 -> rendererState.showCentralGrid = !rendererState.showCentralGrid
+        }
     }
 
     override fun onScrollScaled(
@@ -103,13 +111,6 @@ class Buttons(globalInfo: GlobalInfo, rendererState: RendererState) :
     }
 
     override fun onReleaseScaled(isOnController: Boolean, r: Float, theta: Float) {
-    }
-
-    private fun thetaToControllerMode(theta: Float): ControllerMode {
-        val kind = (theta / (TWO_PI * SEPARATE_NUM.toFloat())).toInt()
-        return when(kind) {
-            else -> ControllerMode.ColorWheel
-        }
     }
 
     companion object {

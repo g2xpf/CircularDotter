@@ -5,13 +5,13 @@ import jp.ac.titech.itpro.sdl.circulardotter.RendererState
 import jp.ac.titech.itpro.sdl.circulardotter.component.controller.ColorWheel
 import kotlin.math.sqrt
 
-enum class ControllerMode {
-    ColorWheel
+sealed class ControllerMode {
+    object ColorWheel: ControllerMode()
 }
+
 
 class Controller(globalInfo: GlobalInfo, rendererState: RendererState) :
     CircularComponent(globalInfo, rendererState) {
-    private var mode = ControllerMode.ColorWheel
 
     override val componentRadius: Float
         get() = windowHeight / sqrt(2.0f)
@@ -23,7 +23,7 @@ class Controller(globalInfo: GlobalInfo, rendererState: RendererState) :
 
     override fun draw() {
         super.draw()
-        when (mode) {
+        when (rendererState.controllerMode) {
             ControllerMode.ColorWheel -> {
                 colorWheel.draw()
             }
@@ -36,7 +36,7 @@ class Controller(globalInfo: GlobalInfo, rendererState: RendererState) :
     }
 
     override fun onTouchScaled(isOnComponent: Boolean, r: Float, theta: Float) {
-        when (mode) {
+        when (rendererState.controllerMode) {
             ControllerMode.ColorWheel -> {
                 colorWheel.onTouchScaled(isOnComponent, r, theta)
             }
@@ -44,7 +44,7 @@ class Controller(globalInfo: GlobalInfo, rendererState: RendererState) :
     }
 
     override fun onScrollScaled(isOnComponent: Boolean, r: Float, theta: Float, dr: Float, dtheta: Float) {
-        when (mode) {
+        when (rendererState.controllerMode) {
             ControllerMode.ColorWheel -> {
                 colorWheel.onScrollScaled(isOnComponent, r, theta, dr, dtheta)
             }
@@ -52,7 +52,7 @@ class Controller(globalInfo: GlobalInfo, rendererState: RendererState) :
     }
 
     override fun onReleaseScaled(isOnComponent: Boolean, r: Float, theta: Float) {
-        when (mode) {
+        when (rendererState.controllerMode) {
             ControllerMode.ColorWheel -> {
                 colorWheel.onReleaseScaled(isOnComponent, r, theta)
             }

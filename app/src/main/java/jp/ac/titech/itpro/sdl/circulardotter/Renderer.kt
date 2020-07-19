@@ -14,12 +14,14 @@ import kotlin.math.sqrt
 data class RendererState (
     var brushColor: Triple<Float, Float, Float>,
     var isDrawing: Boolean,
-    var controllerMode: ControllerMode
+    var controllerMode: ControllerMode,
+    var showGrid: Boolean,
+    var showCentralGrid: Boolean
 )
 
 class Renderer : GLSurfaceView.Renderer {
     private val TAG = Renderer::class.qualifiedName
-    private var rendererState = RendererState(Triple(0.0f, 0.0f, 0.0f), false, ControllerMode.ColorWheel)
+    private var rendererState = RendererState(Triple(0.0f, 0.0f, 0.0f), false, ControllerMode.ColorWheel, true, true)
     private var globalInfo = GlobalInfo(0.0, 0.0f)
     private val components = mutableListOf<Component>()
 

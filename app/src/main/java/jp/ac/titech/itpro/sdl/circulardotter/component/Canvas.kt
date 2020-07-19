@@ -33,9 +33,6 @@ class Canvas(globalInfo: GlobalInfo, rendererState: RendererState) :
 
     private val canvasTexture: Texture
 
-    private var showCentralGrid = true
-    private var showGrid = true
-
     private var pointerIndex: Int? = null
 
     // uv coord
@@ -88,7 +85,7 @@ class Canvas(globalInfo: GlobalInfo, rendererState: RendererState) :
 
         // uniform: showGrid, showCentralGrid
         shaderProgram.getUniformLocation("showGrid").also {
-            GLES31.glUniform2i(it, if (showGrid) 1 else 0, if (showCentralGrid) 1 else 0)
+            GLES31.glUniform2i(it, if (rendererState.showGrid) 1 else 0, if (rendererState.showCentralGrid) 1 else 0)
         }
 
         // uniform: imageDimension
@@ -145,14 +142,6 @@ class Canvas(globalInfo: GlobalInfo, rendererState: RendererState) :
         shaderProgram = ShaderProgram.setFragment(fragmentShader).setVertex(vertexShader).build()
 
         canvasTexture.initialize()
-    }
-
-    fun setGrid(v: Boolean) {
-        showGrid = v
-    }
-
-    fun setCentralGrid(v: Boolean) {
-        showCentralGrid = v
     }
 
     private fun requestDraw() {
