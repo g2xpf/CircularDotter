@@ -98,6 +98,7 @@ class Buttons(globalInfo: GlobalInfo, rendererState: RendererState) :
             0 -> rendererState.controllerMode = ControllerMode.ColorWheel
             1 -> rendererState.showGrid = !rendererState.showGrid
             2 -> rendererState.showCentralGrid = !rendererState.showCentralGrid
+            7 -> rendererState.brushColor = Triple(1.0f, 1.0f, 1.0f)
         }
     }
 
