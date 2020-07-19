@@ -89,7 +89,7 @@ class Canvas(globalInfo: GlobalInfo, rendererState: RendererState) :
         }
 
         // uniform: showGrid, showCentralGrid
-        shaderProgram.getUniformLocation("showGrid").also {
+        shaderProgram.getUniformLocation("iShowGrid").also {
             GLES31.glUniform2i(it, if (rendererState.showGrid) 1 else 0, if (rendererState.showCentralGrid) 1 else 0)
         }
 
@@ -112,6 +112,11 @@ class Canvas(globalInfo: GlobalInfo, rendererState: RendererState) :
         // uniform: iCursorSize
         shaderProgram.getUniformLocation("iCursorSize").also {
             GLES31.glUniform1i(it, rendererState.brushSize)
+        }
+
+        // uniform: iCursorSize
+        shaderProgram.getUniformLocation("iCanvasMode").also {
+            GLES31.glUniform1i(it, if(rendererState.canvasMode == CanvasMode.Write) 1 else 0)
         }
 
         GLES31.glDrawArrays(GLES31.GL_TRIANGLE_FAN, 0, verticesCnt)
@@ -187,7 +192,7 @@ class Canvas(globalInfo: GlobalInfo, rendererState: RendererState) :
 
     private fun requestDraw() {
         val (x, y) = getCursorPos()
-        canvasTexture.write(x, y, 1, 1, rendererState.brushColor)
+        canvasTexture.write(x, y, rendererState.brushSize, rendererState.brushSize, rendererState.brushColor)
     }
 
     companion object {
@@ -221,8 +226,9 @@ uniform float iTime;
 uniform vec2 iResolution;
 uniform vec2 imageDimension;
 uniform int iCursorSize;
+uniform int iCanvasMode;
 // x: showGrid, y: showCentralGrid
-uniform ivec2 showGrid;
+uniform ivec2 iShowGrid;
 uniform ivec2 iCursorPos;
 
 in vec2 uv;
@@ -249,12 +255,12 @@ void main() {
     fragColor = vec4(texture(canvasTexture, uvCentered).xyz, 1.0);
     
     // normal grid
-    if(showGrid.x > 0) {
+    if(iShowGrid.x > 0) {
         fillGrid(uvCentered, cellSize, GRID_WIDTH, vec4(vec3(0.7), 1.0));
     }
     
     // central grid
-    if(showGrid.y > 0) {
+    if(iShowGrid.y > 0) {
         vec2 width = abs(uvCentered - vec2(.5));
         if(width.x < CENTRAL_GRID_WIDTH || width.y < CENTRAL_GRID_WIDTH) {
             fragColor = vec4(vec3(0.0), 1.0);
@@ -262,13 +268,17 @@ void main() {
     }
     
     // cursor
-    float flashColor = abs(fract(iTime) - .5) * 2.;
+    float flash = abs(fract(iTime) - .5) * 2.;
+    vec4 flashColor = iCanvasMode > 0 ? vec4(1.0, flash, flash, 1.0) : vec4(flash, 1.0, flash, 1.0);
     ivec2 diffVec = abs(iCursorPos - ivec2(uvCentered * imageDimension));
-    if(diffVec.x <= iCursorSize / 2 && diffVec.y <= iCursorSize / 2) {
-        ivec2 leftDown = max(iCursorPos - iCursorSize / 2, ivec2(0, 0));
-        ivec2 rightUp = min(iCursorPos + iCursorSize / 2, ivec2(imageDimension) - ivec2(1));
+    
+    int cursorSize = iCanvasMode > 0 ? iCursorSize : 1;
+    
+    if(diffVec.x <= cursorSize / 2 && diffVec.y <= cursorSize / 2) {
+        ivec2 leftDown = max(iCursorPos - cursorSize / 2, ivec2(0, 0));
+        ivec2 rightUp = min(iCursorPos + cursorSize / 2, ivec2(imageDimension) - ivec2(1));
         vec2 wh = vec2(rightUp - leftDown + ivec2(1)) * cellSize;
-        fillGrid(uvCentered - vec2(leftDown) / imageDimension, wh, GRID_WIDTH * 2., vec4(1.0, flashColor, flashColor, 1.0));
+        fillGrid(uvCentered - vec2(leftDown) / imageDimension, wh, GRID_WIDTH * 2., flashColor);
     }
 }
         """
