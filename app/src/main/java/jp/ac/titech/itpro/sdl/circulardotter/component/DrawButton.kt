@@ -1,7 +1,6 @@
 package jp.ac.titech.itpro.sdl.circulardotter.component
 
 import android.opengl.GLES31
-import android.util.Log
 import jp.ac.titech.itpro.sdl.circulardotter.*
 import jp.ac.titech.itpro.sdl.circulardotter.gl.ShaderProgram
 import jp.ac.titech.itpro.sdl.circulardotter.gl.build
@@ -11,7 +10,7 @@ import java.nio.ByteOrder
 import java.nio.FloatBuffer
 import kotlin.math.abs
 
-class DrawButton(globalInfo: GlobalInfo, private val rendererState: RendererState) : Component(globalInfo) {
+class DrawButton(globalInfo: GlobalInfo, rendererState: RendererState) : Component(globalInfo, rendererState) {
     private val TAG = DrawButton::class.qualifiedName
     private var pointerIndex: Int? = null
 
@@ -60,14 +59,12 @@ class DrawButton(globalInfo: GlobalInfo, private val rendererState: RendererStat
 
     override fun onTouch(pointerIndex: PointerIndex, x: Float, y: Float) {
         if (isOnButton(x, y)) {
-            Log.d(TAG, "touched: ${this.pointerIndex} -> $pointerIndex")
             rendererState.isDrawing = true
             this.pointerIndex = pointerIndex
         }
     }
 
     override fun onRelease(pointerIndex: PointerIndex, x: Float, y: Float) {
-        Log.d(TAG, "released: ${this.pointerIndex} -> $pointerIndex")
         if (this.pointerIndex == pointerIndex) {
             rendererState.isDrawing = false
             this.pointerIndex = null

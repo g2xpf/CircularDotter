@@ -3,7 +3,10 @@ package jp.ac.titech.itpro.sdl.circulardotter
 data class GlobalInfo(var inclination: Double, var time: Float)
 typealias PointerIndex = Int
 
-abstract class Component(var globalInfo: GlobalInfo) {
+abstract class Component(
+    protected var globalInfo: GlobalInfo,
+    protected var rendererState: RendererState
+) {
     protected var windowWidth = 1.0f
     protected var windowHeight = 1.0f
 

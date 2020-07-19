@@ -13,8 +13,8 @@ import java.nio.FloatBuffer
 import kotlin.math.abs
 import kotlin.math.floor
 
-class Canvas(globalInfo: GlobalInfo, private val rendererState: RendererState) :
-    Component(globalInfo) {
+class Canvas(globalInfo: GlobalInfo, rendererState: RendererState) :
+    Component(globalInfo, rendererState) {
     private val TAG = Canvas::class.qualifiedName
 
     // private val pixels: Buffer

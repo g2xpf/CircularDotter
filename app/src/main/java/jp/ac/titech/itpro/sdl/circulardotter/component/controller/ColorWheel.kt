@@ -4,19 +4,26 @@ import android.opengl.GLES31
 import android.util.Log
 import jp.ac.titech.itpro.sdl.circulardotter.GlobalInfo
 import jp.ac.titech.itpro.sdl.circulardotter.RendererState
+import jp.ac.titech.itpro.sdl.circulardotter.component.CircularComponent
 import jp.ac.titech.itpro.sdl.circulardotter.gl.ShaderProgram
 import jp.ac.titech.itpro.sdl.circulardotter.gl.build
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
 import kotlin.math.PI
+import kotlin.math.sqrt
 
 class ColorWheel(
-    controllerWidth: Float,
     globalInfo: GlobalInfo,
-    var rendererState: RendererState
-) : ControllerComponent(controllerWidth, globalInfo) {
+    rendererState: RendererState
+) : CircularComponent(globalInfo, rendererState) {
     private val TAG = ColorWheel::class.qualifiedName
+
+    override val componentRadius: Float
+        get() = windowHeight / sqrt(2.0f)
+    override val componentWidth: Float
+        get() = 150.0f
+
 
     private val vertexBuffer: FloatBuffer = ByteBuffer.allocateDirect(vertices.size * 4).run() {
         order(ByteOrder.nativeOrder())
@@ -56,7 +63,7 @@ class ColorWheel(
 
         // uniform: iWheelWidth
         shaderProgram.getUniformLocation("iWheelWidth").also {
-            GLES31.glUniform1f(it, controllerWidth)
+            GLES31.glUniform1f(it, componentWidth)
         }
 
         // uniform: iColor
@@ -78,7 +85,7 @@ class ColorWheel(
         }
     }
 
-    override fun onScrollScaled(isOnController: Boolean, r: Float, theta: Float) {
+    override fun onScrollScaled(isOnController: Boolean, r: Float, theta: Float, dr: Float, dtheta: Float) {
         if (cursor == null) return
         cursor = r to theta
         rendererState.brushColor = thetaToColor(theta)

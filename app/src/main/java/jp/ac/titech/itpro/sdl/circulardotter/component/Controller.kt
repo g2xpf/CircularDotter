@@ -1,19 +1,25 @@
 package jp.ac.titech.itpro.sdl.circulardotter.component
 
-import jp.ac.titech.itpro.sdl.circulardotter.Component
 import jp.ac.titech.itpro.sdl.circulardotter.GlobalInfo
-import jp.ac.titech.itpro.sdl.circulardotter.PointerIndex
 import jp.ac.titech.itpro.sdl.circulardotter.RendererState
 import jp.ac.titech.itpro.sdl.circulardotter.component.controller.ColorWheel
+import kotlin.math.sqrt
 
 enum class ControllerMode {
     ColorWheel
 }
 
-class Controller(globalInfo: GlobalInfo, private var rendererState: RendererState) : Component(globalInfo) {
+class Controller(globalInfo: GlobalInfo, rendererState: RendererState) :
+    CircularComponent(globalInfo, rendererState) {
     private var mode = ControllerMode.ColorWheel
 
-    private val colorWheel = ColorWheel(CONTROLLER_WIDTH, globalInfo, rendererState)
+    override val componentRadius: Float
+        get() = windowHeight / sqrt(2.0f)
+    override val componentWidth: Float
+        get() = 150.0f
+
+    private val colorWheel =
+        ColorWheel(globalInfo, rendererState)
 
     override fun draw() {
         super.draw()
@@ -29,35 +35,31 @@ class Controller(globalInfo: GlobalInfo, private var rendererState: RendererStat
         colorWheel.onWindowResized(width, height)
     }
 
-    override fun onTouch(pointerIndex: PointerIndex, x: Float, y: Float) {
-        when(mode) {
+    override fun onTouchScaled(isOnComponent: Boolean, r: Float, theta: Float) {
+        when (mode) {
             ControllerMode.ColorWheel -> {
-                colorWheel.onTouch(pointerIndex, x, y)
+                colorWheel.onTouchScaled(isOnComponent, r, theta)
             }
         }
     }
 
-    override fun onScroll(pointerIndex: PointerIndex, x: Float, y: Float, dx: Float, dy: Float) {
-        when(mode) {
+    override fun onScrollScaled(isOnComponent: Boolean, r: Float, theta: Float, dr: Float, dtheta: Float) {
+        when (mode) {
             ControllerMode.ColorWheel -> {
-                colorWheel.onScroll(pointerIndex, x, y, dx, dy)
+                colorWheel.onScrollScaled(isOnComponent, r, theta, dr, dtheta)
             }
         }
     }
 
-    override fun onRelease(pointerIndex: PointerIndex, x: Float, y: Float) {
-        when(mode) {
+    override fun onReleaseScaled(isOnComponent: Boolean, r: Float, theta: Float) {
+        when (mode) {
             ControllerMode.ColorWheel -> {
-                colorWheel.onRelease(pointerIndex, x, y)
+                colorWheel.onReleaseScaled(isOnComponent, r, theta)
             }
         }
     }
 
     override fun onSurfaceCreated() {
         colorWheel.onSurfaceCreated()
-    }
-
-    companion object {
-        const val CONTROLLER_WIDTH = 150.0f
     }
 }

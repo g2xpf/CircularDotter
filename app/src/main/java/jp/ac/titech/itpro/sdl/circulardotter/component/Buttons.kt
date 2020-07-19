@@ -2,7 +2,6 @@ package jp.ac.titech.itpro.sdl.circulardotter.component
 
 import android.opengl.GLES31
 import android.util.Log
-import jp.ac.titech.itpro.sdl.circulardotter.Component
 import jp.ac.titech.itpro.sdl.circulardotter.GlobalInfo
 import jp.ac.titech.itpro.sdl.circulardotter.PointerIndex
 import jp.ac.titech.itpro.sdl.circulardotter.RendererState
@@ -15,9 +14,15 @@ import java.nio.FloatBuffer
 import kotlin.math.PI
 import kotlin.math.sqrt
 
-class Buttons(globalInfo: GlobalInfo, private var rendererState: RendererState) :
-    Component(globalInfo) {
+class Buttons(globalInfo: GlobalInfo, rendererState: RendererState) :
+    CircularComponent(globalInfo, rendererState) {
     private val TAG = Buttons::class.qualifiedName
+    private var pointerIndex: PointerIndex? = null
+
+    override val componentRadius: Float
+        get() = windowHeight / sqrt(2.0f) + 150.0f
+    override val componentWidth: Float
+        get() = 150.0f
 
     private val vertexBuffer: FloatBuffer =
         ByteBuffer.allocateDirect(ColorWheel.vertices.size * 4).run() {
@@ -57,12 +62,12 @@ class Buttons(globalInfo: GlobalInfo, private var rendererState: RendererState) 
 
         // iInnerWidth
         shaderProgram.getUniformLocation("iInnerWidth").also {
-            GLES31.glUniform1f(it, Controller.CONTROLLER_WIDTH + windowHeight / sqrt(2.0f))
+            GLES31.glUniform1f(it, componentRadius)
         }
 
         // iAreaWidth
         shaderProgram.getUniformLocation("iAreaWidth").also {
-            GLES31.glUniform1f(it, BUTTON_AREA_WIDTH)
+            GLES31.glUniform1f(it, componentWidth)
         }
 
         // iSeparateNum
@@ -75,26 +80,41 @@ class Buttons(globalInfo: GlobalInfo, private var rendererState: RendererState) 
         GLES31.glDisableVertexAttribArray(pos)
     }
 
-    override fun onRelease(pointerIndex: PointerIndex, x: Float, y: Float) {
-        super.onRelease(pointerIndex, x, y)
-    }
-
     override fun onSurfaceCreated() {
         shaderProgram = ShaderProgram.setFragment(fragmentShader).setVertex(vertexShader).build()
     }
 
-    override fun onScroll(pointerIndex: PointerIndex, x: Float, y: Float, dx: Float, dy: Float) {
-        super.onScroll(pointerIndex, x, y, dx, dy)
+    override fun onRelease(pointerIndex: PointerIndex, x: Float, y: Float) {
+        super.onRelease(pointerIndex, x, y)
     }
 
-    override fun onTouch(pointerIndex: PointerIndex, x: Float, y: Float) {
-        super.onTouch(pointerIndex, x, y)
+    override fun onTouchScaled(isOnController: Boolean, r: Float, theta: Float) {
+        rendererState.controllerMode = thetaToControllerMode(theta)
+        Log.d(TAG, "controller mode changed: ${rendererState.controllerMode}")
+    }
+
+    override fun onScrollScaled(
+        isOnComponent: Boolean,
+        r: Float,
+        theta: Float,
+        dr: Float,
+        dtheta: Float
+    ) {
+    }
+
+    override fun onReleaseScaled(isOnController: Boolean, r: Float, theta: Float) {
+    }
+
+    private fun thetaToControllerMode(theta: Float): ControllerMode {
+        val kind = (theta / (TWO_PI * SEPARATE_NUM.toFloat())).toInt()
+        return when(kind) {
+            else -> ControllerMode.ColorWheel
+        }
     }
 
     companion object {
         const val DIMENSION = 2
         const val STRIDE = DIMENSION * 4
-        const val BUTTON_AREA_WIDTH = 150.0f
         const val SEPARATE_NUM = 8
 
         val vertices = floatArrayOf(
@@ -149,11 +169,22 @@ void main() {
     float outerR = innerWidth + areaWidth;
     float r = length(coordCentered);
     if(r < innerWidth || r > outerR) discard;
-    float theta = mod(atan2(coordCentered.y, coordCentered.x) - iInclination + TWO_PI, TWO_PI);
-    if(theta < 0.2) {
-        fragColor = vec4(0.0);
+    float theta = mod(atan2(coordCentered.y, coordCentered.x) + iInclination + TWO_PI, TWO_PI);
+    float borderAngle = TWO_PI / float(iSeparateNum);
+    float modAngle = mod(theta, borderAngle);
+    int buttonKind = int(floor(theta / borderAngle));
+    for(int i = 0; i < iSeparateNum; ++i) {
+        float r = ((i >> 2) & 1) == 1 ? 1.0 : 0.0;
+        float g = ((i >> 1) & 1) == 1 ? 1.0 : 0.0;
+        float b = ((i >> 0) & 1) == 1 ? 1.0 : 0.0;
+        if(i == buttonKind) {
+            fragColor = vec4(r, g, b, 1.0);
+            break;
+        }
     }
-    fragColor = vec4(1.0); // vec4(vec3(iInclination / TWO_PI + .5), 1.0);
+    if(modAngle < BORDER_WIDTH || modAngle > borderAngle - BORDER_WIDTH) {
+        fragColor = vec4(.1);
+    }
 }
         """
     }
