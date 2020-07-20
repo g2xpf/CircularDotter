@@ -102,6 +102,7 @@ class Canvas(globalInfo: GlobalInfo, rendererState: RendererState) :
         // uniform: canvasTexture
         when (rendererState.canvasMode) {
             CanvasMode.Write, CanvasMode.Read -> {
+                // if initial CanvasMode is Write/Read, this throws NullPointerException
                 val textureIndex = canvasTexture!!.use()
                 shaderProgram.getUniformLocation("canvasTexture").also {
                     GLES31.glUniform1i(it, textureIndex)
@@ -235,8 +236,8 @@ class Canvas(globalInfo: GlobalInfo, rendererState: RendererState) :
             }
             CanvasMode.Read -> {
                 if (rendererState.isDrawing) {
-                    val (x, y) = getCursorPos()
-                    rendererState.brushColor = canvasTexture!!.readColor(x, y)
+                    val (cx, cy) = getCursorPos()
+                    rendererState.brushColor = canvasTexture!!.readColor(cx, cy)
                 }
             }
             CanvasMode.Uninit -> {
@@ -262,11 +263,11 @@ class Canvas(globalInfo: GlobalInfo, rendererState: RendererState) :
 
     override fun onScroll(pointerIndex: PointerIndex, x: Float, y: Float, dx: Float, dy: Float) {
         if (this.pointerIndex != pointerIndex) return
-        val (x, y) = cursor
+        val (cx, cy) = cursor
 
-        val nx = clamp(x + dx / windowHeight, 0.0f, 0.9999f)
+        val nx = clamp(cx + dx / windowHeight, 0.0f, 0.9999f)
         // div by width, and y is reversed
-        val ny = clamp(y + dy / windowHeight, 0.0f, 0.9999f)
+        val ny = clamp(cy + dy / windowHeight, 0.0f, 0.9999f)
 
         cursor = Pair(nx, ny)
 
@@ -276,8 +277,10 @@ class Canvas(globalInfo: GlobalInfo, rendererState: RendererState) :
                     requestDraw()
                 }
                 CanvasMode.Read -> {
-                    val (x, y) = getCursorPos()
-                    rendererState.brushColor = canvasTexture!!.readColor(x, y)
+                    val (newCx, newCy) = getCursorPos()
+                    rendererState.brushColor = canvasTexture!!.readColor(newCx, newCy)
+                }
+                else -> {
                 }
             }
         }
