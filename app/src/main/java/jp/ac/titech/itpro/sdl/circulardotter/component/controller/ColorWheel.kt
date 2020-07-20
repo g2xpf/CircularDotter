@@ -22,8 +22,7 @@ class ColorWheel(
     override val componentRadius: Float
         get() = windowHeight / sqrt(2.0f)
     override val componentWidth: Float
-        get() = 150.0f
-
+        get() = 200.0f
 
     private val vertexBuffer: FloatBuffer = ByteBuffer.allocateDirect(vertices.size * 4).run() {
         order(ByteOrder.nativeOrder())
@@ -70,6 +69,11 @@ class ColorWheel(
         shaderProgram.getUniformLocation("iColor").also {
             val (r, g, b) = rendererState.brushColor
             GLES31.glUniform3f(it, r, g, b)
+        }
+
+        // iShouldOverlay
+        shaderProgram.getUniformLocation("iShouldOverlay").also {
+            GLES31.glUniform1i(it, if(!canvasIsShown) 1 else 0)
         }
 
         GLES31.glDrawArrays(GLES31.GL_TRIANGLE_FAN, 0, verticesCnt)
@@ -154,6 +158,7 @@ uniform float iInclination;
 uniform vec2 iResolution;
 uniform float iWheelWidth;
 uniform vec3 iColor;
+uniform int iShouldOverlay;
 out vec4 fragColor;
 
 const float sqrt2Halved = 0.70710678118;
@@ -176,34 +181,34 @@ void main() {
     if(r < sqrt2Halved || r > sqrt2Halved + wheelWidth) discard;
     float theta = mod(iInclination + atan2(coordCentered.y, coordCentered.x) + TWO_PI, TWO_PI);
     
+    vec3 outColor = vec3(.0);
     if(r > sqrt2Halved + wheelWidth - BORDER_WIDTH) {
         float ratio = smoothstep(0.0, 1.0, mod(theta, PI * 0.125) / (PI * 0.125));
         float woundRatio = abs(ratio - 0.5) * 2.0;
-        vec3 specularColor = mix(vec3(0.1), vec3(.9), woundRatio);
-        fragColor = vec4(specularColor, 1.0);
-        return;
-    }
-    
-    vec3 color = (theta < b) ? vec3(1., a * theta, 0.)
-        : (theta < 2. * b) ? vec3(-a * (theta - 2. * b), 1., 0.)
-        : (theta < PI) ? vec3(0., 1., a * (theta - 2. * b))
-        : (theta < 4. * b) ? vec3(0., -a * (theta - 4. * b), 1.)
-        : (theta < 5. * b) ? vec3(a * (theta - 4. * b), 0., 1.)
-        : vec3(1., 0., -a * (theta - 6. * b));
-        
-    if(r < sqrt2Halved + BORDER_WIDTH) {
-        float rDiff = pow((r - sqrt2Halved) / BORDER_WIDTH, 0.2);
-        float diff = (1.0 - length((iColor - color) * .5));
-        float mixRatio = pow(diff, 15.0) * rDiff;
-        
-        float ratio = smoothstep(0.0, 1.0, mod(theta, PI * 0.125) / (PI * 0.125));
-        float woundRatio = abs(ratio - 0.5) * 2.0;
-        vec3 specularColor = mix(vec3(0.3), vec3(.9), woundRatio);
-        vec3 mixedColor = mix(specularColor, color, mixRatio);
-        
-        fragColor = vec4(color * mixRatio, 1.0);
+        outColor = mix(vec3(0.1), vec3(.9), woundRatio);
     } else {
-        fragColor = vec4(color, 1.);
+        vec3 color = (theta < b) ? vec3(1., a * theta, 0.)
+            : (theta < 2. * b) ? vec3(-a * (theta - 2. * b), 1., 0.)
+            : (theta < PI) ? vec3(0., 1., a * (theta - 2. * b))
+            : (theta < 4. * b) ? vec3(0., -a * (theta - 4. * b), 1.)
+            : (theta < 5. * b) ? vec3(a * (theta - 4. * b), 0., 1.)
+            : vec3(1., 0., -a * (theta - 6. * b));
+            
+        if(r < sqrt2Halved + BORDER_WIDTH) {
+            float rDiff = pow((r - sqrt2Halved) / BORDER_WIDTH, 0.2);
+            float diff = (1.0 - length((iColor - color) * .5));
+            float mixRatio = pow(diff, 15.0) * rDiff;
+            
+            float ratio = smoothstep(0.0, 1.0, mod(theta, PI * 0.125) / (PI * 0.125));
+            float woundRatio = abs(ratio - 0.5) * 2.0;
+            vec3 specularColor = mix(vec3(0.3), vec3(.9), woundRatio);
+            vec3 mixedColor = mix(specularColor, color, mixRatio);
+            
+            outColor = color * mixRatio;
+        } else {
+            outColor = color;
+        }
+        fragColor = vec4(iShouldOverlay > 0 ? max(outColor - vec3(.5), vec3(.0)) : outColor, 1.);
     }
 }
         """

@@ -1,28 +1,60 @@
 package jp.ac.titech.itpro.sdl.circulardotter.gl
 
+import android.graphics.Bitmap
 import android.opengl.GLES31
-import android.util.Log
-import androidx.core.math.MathUtils.clamp
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.IntBuffer
-import java.util.*
+import java.util.concurrent.ConcurrentLinkedQueue
 import kotlin.math.max
 import kotlin.math.min
 
-class Texture(
+class MutableTexture(
     private val width: Int,
-    private val height: Int,
-    private var data: ByteBuffer,
-    private val colorUpdateQueue: LinkedList<CellInfo> = LinkedList(),
-    private var prevCellInfo: CellInfo = CellInfo(-1 to -1, -1 to -1, Triple(0, 0, 0))
+    private val height: Int
 ) {
-    private val TAG = Texture::class.qualifiedName
+
+    private val TAG = MutableTexture::class.qualifiedName
     private var texture: Int = 0
     private val textureCount: Int
 
+    private val colorUpdateQueue: ConcurrentLinkedQueue<CellInfo> = ConcurrentLinkedQueue()
+    private var prevCellInfo: CellInfo = CellInfo()
+
+    private lateinit var data: ByteBuffer
+
     init {
         textureCount = totalTextureCount++
+    }
+
+    constructor(width: Int, height: Int, data: ByteBuffer) : this(width, height) {
+        this.data = data
+    }
+
+    constructor(width: Int, height: Int, bmp: Bitmap) : this(width, height) {
+        val rgbaBuffer = ByteBuffer.allocateDirect(4 * width * height).run {
+            order(ByteOrder.nativeOrder())
+        }
+
+        val rgbBuffer = ByteBuffer.allocateDirect(3 * width * height).run {
+            order(ByteOrder.nativeOrder())
+        }
+        bmp.copyPixelsToBuffer(rgbaBuffer)
+        rgbaBuffer.rewind()
+
+        val buf = ByteArray(3)
+
+        rgbaBuffer.run {
+            while (hasRemaining()) {
+                get(buf)
+                rgbBuffer.put(buf)
+                get()
+            }
+        }
+        rgbBuffer.rewind()
+
+        data = rgbBuffer
+
     }
 
     fun initialize() {
@@ -55,6 +87,7 @@ class Texture(
             GLES31.GL_TEXTURE_MIN_FILTER,
             GLES31.GL_NEAREST
         )
+        GLES31.glGenerateMipmap(GLES31.GL_TEXTURE_2D)
         GLES31.glBindTexture(GLES31.GL_TEXTURE_2D, 0)
     }
 
@@ -64,7 +97,8 @@ class Texture(
 
         if (colorUpdateQueue.size > 0) {
             while (colorUpdateQueue.size > 0) {
-                val cellInfo = colorUpdateQueue.pop()
+                // Log.d(TAG, "size: ${colorUpdateQueue.size}")
+                val cellInfo = colorUpdateQueue.remove()
                 val (x, y) = cellInfo.coord
                 val (w, h) = cellInfo.size
                 val (r, g, b) = cellInfo.color
@@ -120,7 +154,7 @@ class Texture(
         if (prevCellInfo == newCellInfo) return
 
         writeBytes(x, y, w, h, colorBytes)
-        colorUpdateQueue.push(newCellInfo)
+        colorUpdateQueue.add(newCellInfo)
 
         prevCellInfo = newCellInfo
     }
@@ -134,21 +168,18 @@ class Texture(
 
     private fun writeBytes(x: Int, y: Int, w: Int, h: Int, color: Triple<Byte, Byte, Byte>) {
         val (r, g, b) = color
-        val renderingArea =  getRenderingArea(x, y, w, h)
+        val renderingArea = getRenderingArea(x, y, w, h)
         val (nx, ny) = renderingArea.leftBottom
         val (nw, nh) = renderingArea.wh
 
-        Log.d(TAG, "xy = ${renderingArea.leftBottom}")
-        Log.d(TAG, "wh = ${renderingArea.wh}")
-
         data.run {
             position(3 * (nx + ny * width))
-            outer@ for(i in 0 until nh) {
-                for(j in 0 until nw) {
+            outer@ for (i in 0 until nh) {
+                for (j in 0 until nw) {
                     put(r)
                     put(g)
                     put(b)
-                    if(i == nh - 1 && j == nw - 1) break@outer
+                    if (i == nh - 1 && j == nw - 1) break@outer
                 }
                 val curPos = position()
                 position(curPos + 3 * (width - nw))
@@ -181,9 +212,9 @@ class Texture(
             order(ByteOrder.nativeOrder())
         }
         data.run {
-            for(i in height - 1 downTo 0) {
+            for (i in height - 1 downTo 0) {
                 position(3 * i * width)
-                for(j in 0 until width) {
+                for (j in 0 until width) {
                     buf.put(get()) // 255.toByte())
                     buf.put(get()) // get())
                     buf.put(get()) // get())
@@ -200,13 +231,13 @@ class Texture(
         var totalTextureCount = 0
     }
 
-    data class RenderingArea (
+    data class RenderingArea(
         val leftBottom: Pair<Int, Int>, val rightTop: Pair<Int, Int>, val wh: Pair<Int, Int>
     )
 
     data class CellInfo(
-        val coord: Pair<Int, Int>,
-        val size: Pair<Int, Int>,
-        val color: Triple<Byte, Byte, Byte>
+        val coord: Pair<Int, Int> = -1 to -1,
+        val size: Pair<Int, Int> = -1 to -1,
+        val color: Triple<Byte, Byte, Byte> = Triple(0, 0, 0)
     )
 }

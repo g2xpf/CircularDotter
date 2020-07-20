@@ -23,19 +23,21 @@ abstract class CircularComponent(
     private var pointerIndex: PointerIndex? = null
 
     override fun onTouch(pointerIndex: PointerIndex, x: Float, y: Float) {
+        if (!canvasIsShown) return
         this.pointerIndex = pointerIndex
         val (r, theta) = toPolarCoord(x, y)
         onTouchScaled(isOnComponent(r), r, theta)
     }
 
     override fun onScroll(pointerIndex: PointerIndex, x: Float, y: Float, dx: Float, dy: Float) {
-        if (this.pointerIndex != pointerIndex) return
+        if (!canvasIsShown) return
         val (r, theta) = toPolarCoord(x, y)
         val (dr, dtheta) = toPolarCoord(dx, -dy)
         onScrollScaled(isOnComponent(r), r, theta, dr, dtheta)
     }
 
     override fun onRelease(pointerIndex: PointerIndex, x: Float, y: Float) {
+        if (!canvasIsShown) return
         if (this.pointerIndex == pointerIndex) {
             this.pointerIndex = null
         }

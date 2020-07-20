@@ -2,4 +2,15 @@
     <string name="app_name">CircularDotter</string>
     <string name="toast_no_gyroscope">No gyroscopes found</string>
     <string name="toast_no_sensor_manager">No sensor manager found</string>
+    <string name="init_image_desc">Image for initialized image size selection</string>
+    <string name="save_image_desc">Image for saved image size selection</string>
+    <string name="secondary_border">secondary border icon</string>
+    <string name="primary_border">primary border icon</string>
+    <string name="save">save icon</string>
+    <string name="pencil_plus">pencil plus icon</string>
+    <string name="pencil">pencil icon</string>
+    <string name="new_icon">new icon</string>
+    <string name="eraser">eraser icon</string>
+    <string name="dropper">dropper icon</string>
+    <string name="fill">fill icon</string>
 </resources>

@@ -4,8 +4,6 @@ import android.opengl.GLES31
 import jp.ac.titech.itpro.sdl.circulardotter.GlobalInfo
 import jp.ac.titech.itpro.sdl.circulardotter.PointerIndex
 import jp.ac.titech.itpro.sdl.circulardotter.RendererState
-import jp.ac.titech.itpro.sdl.circulardotter.SaveImageState
-import jp.ac.titech.itpro.sdl.circulardotter.component.controller.ColorWheel
 import jp.ac.titech.itpro.sdl.circulardotter.gl.ShaderProgram
 import jp.ac.titech.itpro.sdl.circulardotter.gl.build
 import java.nio.ByteBuffer
@@ -17,18 +15,17 @@ import kotlin.math.sqrt
 class Buttons(globalInfo: GlobalInfo, rendererState: RendererState) :
     CircularComponent(globalInfo, rendererState) {
     private val TAG = Buttons::class.qualifiedName
-    private var pointerIndex: PointerIndex? = null
 
     override val componentRadius: Float
-        get() = windowHeight / sqrt(2.0f) + 150.0f
+        get() = windowHeight / sqrt(2.0f) + 200.0f
     override val componentWidth: Float
-        get() = 150.0f
+        get() = 300.0f
 
     private val vertexBuffer: FloatBuffer =
-        ByteBuffer.allocateDirect(ColorWheel.vertices.size * 4).run() {
+        ByteBuffer.allocateDirect(vertices.size * 4).run() {
             order(ByteOrder.nativeOrder())
             asFloatBuffer().apply {
-                put(ColorWheel.vertices)
+                put(vertices)
                 rewind()
             }
         }
@@ -42,10 +39,10 @@ class Buttons(globalInfo: GlobalInfo, rendererState: RendererState) :
             GLES31.glEnableVertexAttribArray(it)
             GLES31.glVertexAttribPointer(
                 it,
-                ColorWheel.DIMENSION,
+                DIMENSION,
                 GLES31.GL_FLOAT,
                 false,
-                ColorWheel.STRIDE,
+                STRIDE,
                 vertexBuffer
             )
         }
@@ -75,7 +72,12 @@ class Buttons(globalInfo: GlobalInfo, rendererState: RendererState) :
             GLES31.glUniform1i(it, SEPARATE_NUM)
         }
 
-        GLES31.glDrawArrays(GLES31.GL_TRIANGLE_FAN, 0, ColorWheel.verticesCnt)
+        // iShouldOverlay
+        shaderProgram.getUniformLocation("iShouldOverlay").also {
+            GLES31.glUniform1i(it, if(!canvasIsShown) 1 else 0)
+        }
+
+        GLES31.glDrawArrays(GLES31.GL_TRIANGLE_FAN, 0, verticesCnt)
 
         GLES31.glDisableVertexAttribArray(pos)
     }
@@ -93,10 +95,11 @@ class Buttons(globalInfo: GlobalInfo, rendererState: RendererState) :
         val angle = (theta - globalInfo.inclination + TWO_PI) % TWO_PI
         val kind = (angle * SEPARATE_NUM.toFloat() / TWO_PI).toInt()
         when(kind) {
-            0 -> rendererState.controllerMode = ControllerMode.ColorWheel
+            0 -> rendererState.canvasMode = CanvasMode.Uninit
             1 -> rendererState.showGrid = !rendererState.showGrid
             2 -> rendererState.showCentralGrid = !rendererState.showCentralGrid
-            4 -> rendererState.saveImageState = SaveImageState.SaveRequested(256)
+            3 -> rendererState.fillCanvas = true
+            4 -> rendererState.canvasMode = if(rendererState.canvasMode == CanvasMode.SaveRequested) CanvasMode.Write else CanvasMode.SaveRequested
             5 -> rendererState.brushSize = if(rendererState.brushSize >= 11) 1 else rendererState.brushSize + 2
             6 -> rendererState.canvasMode = if(rendererState.canvasMode == CanvasMode.Write) CanvasMode.Read else CanvasMode.Write
             7 -> rendererState.brushColor = Triple(1.0f, 1.0f, 1.0f)
@@ -149,6 +152,7 @@ uniform vec2 iResolution;
 uniform float iAreaWidth;
 uniform float iInnerWidth;
 uniform int iSeparateNum;
+uniform int iShouldOverlay;
 
 out vec4 fragColor;
 
@@ -176,18 +180,21 @@ void main() {
     float borderAngle = TWO_PI / float(iSeparateNum);
     float modAngle = mod(theta, borderAngle);
     int buttonKind = int(floor(theta / borderAngle));
+    vec3 color = vec3(0.);
     for(int i = 0; i < iSeparateNum; ++i) {
         float r = ((i >> 2) & 1) == 1 ? 0.7 : 0.0;
         float g = ((i >> 1) & 1) == 1 ? 0.7 : 0.0;
         float b = ((i >> 0) & 1) == 1 ? 0.7 : 0.0;
         if(i == buttonKind) {
-            fragColor = vec4(r, g, b, 1.0);
+            color = vec3(r, g, b);
             break;
         }
     }
     if(modAngle < BORDER_WIDTH || modAngle > borderAngle - BORDER_WIDTH) {
-        fragColor = vec4(.1);
+        color = vec3(.1);
     }
+    
+    fragColor = vec4(iShouldOverlay > 0 ? max(color - vec3(.5), vec3(.0)): color, 1.0);
 }
         """
     }

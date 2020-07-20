@@ -19,12 +19,13 @@ sealed class SaveImageState {
 }
 
 data class RendererState(
-    var canvasMode: CanvasMode = CanvasMode.Write,
+    var canvasMode: CanvasMode = CanvasMode.Uninit,
     var brushColor: Triple<Float, Float, Float> = Triple(1.0f, 0.0f, 0.0f),
     var brushSize: Int = 1,
     var isDrawing: Boolean = false,
     var controllerMode: ControllerMode = ControllerMode.ColorWheel,
     var showGrid: Boolean = true,
+    var fillCanvas: Boolean = true,
     var showCentralGrid: Boolean = true,
     var saveImageState: SaveImageState = SaveImageState.Steady,
     var contentResolver: ContentResolver? = null,

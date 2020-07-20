@@ -26,7 +26,7 @@ class ColorPallete(globalInfo: GlobalInfo, rendererState: RendererState) :
     private val vertexBuffer: FloatBuffer = ByteBuffer.allocateDirect(vertices.size * 4).run() {
         order(ByteOrder.nativeOrder())
         asFloatBuffer().apply {
-            put(Companion.vertices)
+            put(vertices)
             rewind()
         }
     }

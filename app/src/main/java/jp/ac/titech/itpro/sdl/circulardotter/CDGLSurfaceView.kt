@@ -3,7 +3,6 @@ package jp.ac.titech.itpro.sdl.circulardotter
 import android.content.ContentResolver
 import android.content.Context
 import android.opengl.GLSurfaceView
-import android.os.Parcelable
 import android.util.AttributeSet
 import android.util.Log
 import android.view.MotionEvent
@@ -81,11 +80,6 @@ class CDGLSurfaceView(context: Context, attributeSet: AttributeSet) :
                     val memoryIndex = index + pointIdGap
                     val (x, y) = event.getX(index) to event.getY(index)
                     val (dx, dy) = x - prevX[memoryIndex] to y - prevY[memoryIndex]
-                    Log.d(TAG, "index $memoryIndex: {")
-                    Log.d(TAG, "\tprevX, prevY = ${prevX[memoryIndex]}, ${prevY[memoryIndex]}")
-                    Log.d(TAG, "\tx, y: $x, $y")
-                    Log.d(TAG, "\tdx, dy: $dx, $dy")
-                    Log.d(TAG, "}")
 
                     // only moving cursor
                     if (abs(dx) + abs(dy) > 0.0) {

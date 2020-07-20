@@ -5,15 +5,14 @@ import android.graphics.Bitmap
 import android.graphics.Bitmap.createScaledBitmap
 import android.graphics.BitmapFactory
 import android.opengl.GLES31
-import android.os.AsyncTask
 import android.provider.MediaStore
 import android.util.Log
 import android.widget.Toast
-import androidx.core.graphics.scale
 import androidx.core.math.MathUtils.clamp
 import jp.ac.titech.itpro.sdl.circulardotter.*
+import jp.ac.titech.itpro.sdl.circulardotter.gl.ImageTexture
 import jp.ac.titech.itpro.sdl.circulardotter.gl.ShaderProgram
-import jp.ac.titech.itpro.sdl.circulardotter.gl.Texture
+import jp.ac.titech.itpro.sdl.circulardotter.gl.MutableTexture
 import jp.ac.titech.itpro.sdl.circulardotter.gl.build
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -25,9 +24,11 @@ import kotlin.math.abs
 import kotlin.math.floor
 
 
-enum class CanvasMode {
-    Read,
-    Write
+enum class CanvasMode(val innerValue: Int) {
+    Read(0),
+    Write(1),
+    Uninit(2),
+    SaveRequested(3)
 }
 
 class Canvas(globalInfo: GlobalInfo, rendererState: RendererState) :
@@ -44,31 +45,35 @@ class Canvas(globalInfo: GlobalInfo, rendererState: RendererState) :
     }
     private lateinit var shaderProgram: ShaderProgram
 
+    private var initSize: Pair<Int, Int>? = null
+
     private var imageWidth = 32
     private var imageHeight = 32
-    private var imageBuffer: ByteBuffer
+    private lateinit var imageBuffer: ByteBuffer
 
-    private val canvasTexture: Texture
+    private var canvasTexture: MutableTexture? = null
+    private lateinit var initImageTexture: ImageTexture
+    private lateinit var saveImageTexture: ImageTexture
 
     private var pointerIndex: Int? = null
 
     // uv coord
     private var cursor = Pair<Float, Float>(0.0f, 0.0f)
 
-    init {
+    private fun initializeCanvasTexture(width: Int, height: Int) {
+        imageWidth = width
+        imageHeight = height
+
         imageBuffer = ByteBuffer.allocateDirect(imageWidth * imageHeight * 3).run() {
             order(ByteOrder.nativeOrder())
         }
-        repeat(imageWidth * imageHeight) { i ->
-            val r = (i % imageWidth) * (256 / imageWidth)
-            val g = (i / imageHeight) * (256 / imageHeight)
-            imageBuffer.put(r.toByte())
-            imageBuffer.put(g.toByte())
-            imageBuffer.put(0.toByte())
+        repeat(3 * imageWidth * imageHeight) {
+            imageBuffer.put(255.toByte())
         }
         imageBuffer.rewind()
 
-        canvasTexture = Texture(imageWidth, imageHeight, imageBuffer)
+        canvasTexture = MutableTexture(imageWidth, imageHeight, imageBuffer)
+        canvasTexture!!.initialize()
     }
 
     override fun draw() {
@@ -95,9 +100,25 @@ class Canvas(globalInfo: GlobalInfo, rendererState: RendererState) :
         }
 
         // uniform: canvasTexture
-        val textureIndex = canvasTexture.use()
-        shaderProgram.getUniformLocation("canvasTexture").also {
-            GLES31.glUniform1i(it, textureIndex)
+        when (rendererState.canvasMode) {
+            CanvasMode.Write, CanvasMode.Read -> {
+                val textureIndex = canvasTexture!!.use()
+                shaderProgram.getUniformLocation("canvasTexture").also {
+                    GLES31.glUniform1i(it, textureIndex)
+                }
+            }
+            CanvasMode.Uninit -> {
+                val textureIndex = initImageTexture.use()
+                shaderProgram.getUniformLocation("canvasTexture").also {
+                    GLES31.glUniform1i(it, textureIndex)
+                }
+            }
+            CanvasMode.SaveRequested -> {
+                val textureIndex = saveImageTexture.use()
+                shaderProgram.getUniformLocation("canvasTexture").also {
+                    GLES31.glUniform1i(it, textureIndex)
+                }
+            }
         }
 
         // uniform: showGrid, showCentralGrid
@@ -132,7 +153,7 @@ class Canvas(globalInfo: GlobalInfo, rendererState: RendererState) :
 
         // uniform: iCursorSize
         shaderProgram.getUniformLocation("iCanvasMode").also {
-            GLES31.glUniform1i(it, if (rendererState.canvasMode == CanvasMode.Write) 1 else 0)
+            GLES31.glUniform1i(it, rendererState.canvasMode.innerValue)
         }
 
         GLES31.glDrawArrays(GLES31.GL_TRIANGLE_FAN, 0, verticesCnt)
@@ -141,14 +162,27 @@ class Canvas(globalInfo: GlobalInfo, rendererState: RendererState) :
     }
 
     override fun update() {
+        if(rendererState.fillCanvas) {
+            rendererState.fillCanvas = false
+            canvasTexture?.write(imageWidth / 2, imageHeight / 2, imageWidth + 1, imageHeight + 1, rendererState.brushColor)
+        }
+        val size = initSize
+        if(rendererState.canvasMode == CanvasMode.Uninit && size != null) {
+            val (w, h) = size
+            initializeCanvasTexture(w, h)
+            initSize = null
+            rendererState.canvasMode = CanvasMode.Write
+        }
+
         when (val saveImageState = rendererState.saveImageState) {
             is SaveImageState.SaveRequested -> {
                 val destSize = saveImageState.destSize
                 rendererState.saveImageState = SaveImageState.Steady
+                rendererState.canvasMode = CanvasMode.Write
 
                 thread {
-                    val (width, height, image) = canvasTexture.read()
-                    val fileName = SimpleDateFormat("yyyy-MM-dd-HH-mm-ss").format(Date())
+                    val (width, height, image) = canvasTexture!!.read()
+                    val fileName = SimpleDateFormat("yyyy-MM-dd-HH-mm-ss", Locale.JAPAN).format(Date())
                     Log.d(TAG, "image: $image")
                     var bmp = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
                     bmp.copyPixelsFromBuffer(image)
@@ -191,14 +225,36 @@ class Canvas(globalInfo: GlobalInfo, rendererState: RendererState) :
         if (isOnCanvas) {
             this.pointerIndex = pointerIndex
         }
-        if (rendererState.isDrawing) {
-            when (rendererState.canvasMode) {
-                CanvasMode.Write -> {
+        val (uvx, uvy) = (x - windowWidth * 0.5) / windowHeight + 0.5f to (windowHeight - y) / windowHeight
+        val (ix, iy) = clamp((uvx * 2.0).toInt(), 0, 1) to clamp((uvy * 2.0).toInt(), 0, 1)
+        when (rendererState.canvasMode) {
+            CanvasMode.Write -> {
+                if (rendererState.isDrawing) {
                     requestDraw()
                 }
-                CanvasMode.Read -> {
+            }
+            CanvasMode.Read -> {
+                if (rendererState.isDrawing) {
                     val (x, y) = getCursorPos()
-                    rendererState.brushColor = canvasTexture.readColor(x, y)
+                    rendererState.brushColor = canvasTexture!!.readColor(x, y)
+                }
+            }
+            CanvasMode.Uninit -> {
+                if (!isOnCanvas) return
+                val imageSize = initImageSizeArray[ix][iy]
+                Log.d(TAG, "initialized as $imageSize * $imageSize")
+                initSize = imageSize to imageSize
+            }
+            CanvasMode.SaveRequested -> {
+                if (!isOnCanvas) return
+                val (cuvx, cuvy) = uvx - 0.5 to uvy - 0.5
+                val radius = 0.2
+                if(radius * radius > cuvx * cuvx + cuvy * cuvy) {
+                    rendererState.canvasMode = CanvasMode.Write
+                } else {
+                    val imageSize = saveImageSizeArray[ix][iy]
+                    rendererState.saveImageState =
+                        SaveImageState.SaveRequested(imageSize ?: imageWidth)
                 }
             }
         }
@@ -221,7 +277,7 @@ class Canvas(globalInfo: GlobalInfo, rendererState: RendererState) :
                 }
                 CanvasMode.Read -> {
                     val (x, y) = getCursorPos()
-                    rendererState.brushColor = canvasTexture.readColor(x, y)
+                    rendererState.brushColor = canvasTexture!!.readColor(x, y)
                 }
             }
         }
@@ -237,7 +293,22 @@ class Canvas(globalInfo: GlobalInfo, rendererState: RendererState) :
     override fun onSurfaceCreated() {
         shaderProgram = ShaderProgram.setFragment(fragmentShader).setVertex(vertexShader).build()
 
-        canvasTexture.initialize()
+        canvasTexture?.initialize()
+
+        val initImage = BitmapFactory.decodeResource(
+            rendererState.activity?.resources,
+            R.drawable.init_size_select
+        )
+        initImageTexture = ImageTexture(initImage)
+
+        val saveImage = BitmapFactory.decodeResource(
+            rendererState.activity?.resources,
+            R.drawable.save_image_size_select
+        )
+        saveImageTexture = ImageTexture(saveImage)
+
+        initImageTexture.initialize()
+        saveImageTexture.initialize()
     }
 
     private fun getCursorPos(): Pair<Int, Int> {
@@ -253,7 +324,7 @@ class Canvas(globalInfo: GlobalInfo, rendererState: RendererState) :
 
     private fun requestDraw() {
         val (x, y) = getCursorPos()
-        canvasTexture.write(
+        canvasTexture!!.write(
             x,
             y,
             rendererState.brushSize,
@@ -265,6 +336,8 @@ class Canvas(globalInfo: GlobalInfo, rendererState: RendererState) :
     companion object {
         const val DIMENSION = 2
         const val STRIDE = DIMENSION * 4
+        val initImageSizeArray = arrayOf(arrayOf(16, 8), arrayOf(64, 32))
+        val saveImageSizeArray = arrayOf(arrayOf(64, null), arrayOf(256, 128))
 
         val vertices = floatArrayOf(
             -1.0f, -1.0f,
@@ -304,6 +377,7 @@ out vec4 fragColor;
 
 const float GRID_WIDTH = 0.001;
 const float CENTRAL_GRID_WIDTH = GRID_WIDTH * 2.;
+const float TWO_PI = 6.283185;
 
 void fillGrid(in vec2 p, in vec2 cellSize, in float gridWidth, in vec4 color) {
     vec2 roundWidth = cellSize * .5 - abs(mod(p, cellSize) - (cellSize * .5)); 
@@ -319,7 +393,14 @@ void main() {
     vec2 cellSize = 1.0 / imageDimension;
     
     // canvas
-    fragColor = vec4(texture(canvasTexture, uvCentered).xyz, 1.0);
+    if(iCanvasMode >= 2) {
+        // when shouldn't draw the canvas, draw images only
+        vec2 uvFlipped = vec2(uvCentered.x, 1.0 - uvCentered.y);
+        fragColor = smoothstep(0.6, 1.0, texture(canvasTexture, uvFlipped));
+        return;
+    }
+    vec4 canvasColor = texture(canvasTexture, uvCentered);
+    fragColor = vec4(canvasColor.xyz, 1.0);
     
     // normal grid
     if(iShowGrid.x > 0) {
@@ -335,8 +416,14 @@ void main() {
     }
     
     // cursor
-    float flash = abs(fract(iTime) - .5) * 2.;
-    vec4 flashColor = iCanvasMode > 0 ? vec4(1.0, flash, flash, 1.0) : vec4(flash, 1.0, flash, 1.0);
+    // float flash = abs(fract(iTime) - .5) * 2.;
+    float flash = fract(iTime) * TWO_PI;
+    vec4 flashColor = iCanvasMode > 0 ?
+        vec4(
+            (cos(flash) + 1.) * .5,
+            (sin(flash) + 1.) * .5,
+            (sin(2. * flash) + 1.) * .5, 1.0
+        ) : vec4((cos(flash) + 1.) * .5, 1.0, (cos(flash) + 1.) * .5, 1.0);
     ivec2 diffVec = abs(iCursorPos - ivec2(uvCentered * imageDimension));
     
     int cursorSize = iCanvasMode > 0 ? iCursorSize : 1;
@@ -345,7 +432,7 @@ void main() {
         ivec2 leftDown = max(iCursorPos - cursorSize / 2, ivec2(0, 0));
         ivec2 rightUp = min(iCursorPos + cursorSize / 2, ivec2(imageDimension) - ivec2(1));
         vec2 wh = vec2(rightUp - leftDown + ivec2(1)) * cellSize;
-        fillGrid(uvCentered - vec2(leftDown) / imageDimension, wh, GRID_WIDTH * 2., flashColor);
+        fillGrid(uvCentered - vec2(leftDown) / imageDimension, wh, (cellSize * 0.1).x, flashColor);
     }
 }
         """

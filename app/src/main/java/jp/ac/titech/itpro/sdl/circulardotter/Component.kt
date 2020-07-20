@@ -1,5 +1,7 @@
 package jp.ac.titech.itpro.sdl.circulardotter
 
+import jp.ac.titech.itpro.sdl.circulardotter.component.CanvasMode
+
 data class GlobalInfo(var inclination: Double, var time: Float)
 typealias PointerIndex = Int
 
@@ -9,6 +11,9 @@ abstract class Component(
 ) {
     protected var windowWidth = 1.0f
     protected var windowHeight = 1.0f
+
+    protected val canvasIsShown
+        get() = rendererState.canvasMode == CanvasMode.Read || rendererState.canvasMode == CanvasMode.Write
 
     open fun draw() {
         update()
