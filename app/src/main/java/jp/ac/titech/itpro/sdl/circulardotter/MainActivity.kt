@@ -101,6 +101,11 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         super.onResume()
         Log.d(TAG, "onResume")
         glView.onResume()
+
+        axisX = Quaternion.I
+        axisY = Quaternion.J
+        axisZ = Quaternion.K
+
         manager.registerListener(this, gyroscope, SensorManager.SENSOR_DELAY_FASTEST)
     }
 

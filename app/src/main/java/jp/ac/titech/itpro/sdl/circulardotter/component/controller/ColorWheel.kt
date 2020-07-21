@@ -208,8 +208,8 @@ void main() {
         } else {
             outColor = color;
         }
-        fragColor = vec4(iShouldOverlay > 0 ? max(outColor - vec3(.5), vec3(.0)) : outColor, 1.);
     }
+    fragColor = vec4(iShouldOverlay > 0 ? max(outColor - vec3(.5), vec3(.0)) : outColor, 1.);
 }
         """
     }
